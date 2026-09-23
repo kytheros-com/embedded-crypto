@@ -1,4 +1,5 @@
 # Embedded Crypto
+[![CI](https://github.com/kytheros-com/embedded-crypto/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kytheros-com/embedded-crypto/actions/workflows/ci.yml)
 
 Cryptographic implementations for embedded and resource-constrained
 systems, developed by Jason Worth Martin and published through Kytheros.
