@@ -1,20 +1,22 @@
 # Embedded-Crypto Architecture
 
-**Status:** Draft for design review  
-**Date:** 2026-10-19  
+**Status:** Draft for design review; MCL finite-state details remain open  
+**Last reviewed:** 2026-10-20  
 **Repository:** `kytheros-com/embedded-crypto`  
 **Review baseline:** `main` at `6675ba7a434dbf9112c6bc0693249d05771a5f78`  
-**Intended repository location:** `docs/assurance/architecture.md`
+**Working branch:** `design-requirements-audit/2026-10-19`
 
 ## 1. Purpose and scope
 
 This document defines the architecture for the Kytheros `embedded-crypto` project.
 
-The module's logical architectural roughly divides into three categories:
+The project distinguishes three logical architectural layers:
 
 1. **Cryptographic primitives** implement specified algorithms, expose bounded and explicit interfaces, and supply algorithm-level evidence.
-2. The **Platform Integration Layer (PIL)** implements narrowly scoped platform-dependent mechanisms used for memory placement, protection, and zeroization; hardware access; and privilege transitions.
-3. The **Module Control Layer (MCL)** implements the logical boundary of the module; controls data movement, cryptographic primitive dispatch, and self tests; and maintains the security configuration.
+2. The **Platform Integration Layer (PIL)** implements narrowly scoped platform-dependent mechanisms for memory placement, protection and zeroization; hardware access; reset and exception entry; and privilege transitions.
+3. The **Module Control Layer (MCL)** controls external module service interfaces, cryptographic dispatch, state transitions, self-test coordination, SSP lifecycle and the selected security policy.
+
+These are logical responsibilities, not necessarily separate crates, binaries, security domains or validation boundaries. The complete cryptographic boundary and module embodiment remain open under Q-001.
 
 
 ## 2. Architectural principles
@@ -45,52 +47,51 @@ Any discrepancy between these documents is an error and should be reported and r
 
 ```mermaid
 flowchart TB
-    Caller[Application / boot code / authorized client]
-    MCL[Module Control Layer<br/>
-        services, policy, state machine, SSP lifecycle]
-    Crypto[Cryptographic primitives<br>
-        no_std / no_alloc; caller-provided resources]
-    PIL[Platform Integration Layer<br/>
-        placement, protection, hardware access, zeroize]
-    HW[MCU hardware / memory / entropy peripheral]
+    Caller["Application / boot code / authorized client"]
+    MCL["Module Control Layer (MCL)<br/>services, policy, state machine, SSP lifecycle"]
+    Crypto["Cryptographic primitives<br/>no_std / no_alloc; caller-provided resources"]
+    PIL["Platform Integration Layer (PIL)<br/>memory protection, hardware access, exception / reset entry"]
+    HW["MCU hardware / memory / entropy peripheral"]
 
-    Caller <-->|Interfaces for Cryptographic Boundary| MCL
-    MCL    <-->|algorithm calls; bounded buffers| Crypto
-    MCL    <-->|provisioning, controls, hardware services| PIL
-    PIL    <-->|configured memory and hardware operations| HW
+    Caller <-->|"Defined module service interfaces"| MCL
+    MCL <-->|"Bounded algorithm calls"| Crypto
+    MCL <-->|"Resource control and fault handoff"| PIL
+    PIL <-->|"Hardware, interrupt and reset mechanisms"| HW
 ```
 
 ### 4.1 Cryptographic primitives
 
-The cryptographic primitives are only responsible for the following:
+The cryptographic primitives have these principal responsibilities:
 
 - Conformance to a named algorithm specification, revision, supported parameter set, and defined operation; input validation and deterministic algorithm behavior as applicable.
 - Explicit algorithm state and working-storage contracts, including bounded maximum storage and stack requirements for supported configurations.
 - Correctness of internal state transitions, error handling, and relevant cleanup of primitive-owned temporary secrets.
 - Algorithm-level development tests and evidence, including known-answer and boundary tests, and independent comparisons when available.
 - Documentation of side-channel assumptions, implementation variants, and limitations of available assurance.
-- An algorithm that consumes randomness accepts an **explicitly provided, documented random input**; it does not discover, generate, or request entropy.
+- An algorithm requiring random inputs declares the exact kind and amount of material needed (for example, deterministic seeds, DRBG-generated bits, or entropy inputs for a DRBG mechanism). Ordinary algorithms do not independently discover hardware sources or fetch entropy; externally supplied inputs are subject to the algorithm's specific contract.
 
 
 ### 4.2 Platform Integration Layer (PIL)
 
-The Platform Integration Layer is only responsible for the following:
+The Platform Integration Layer has these principal responsibilities:
 
 - Binding each supported target to fixed or statically assigned memory regions for module state, CSPs and other SSPs, plaintext, primitive workspaces, and sensitive execution stacks where required.
 - Applying the selected platform's access-control mechanisms and privilege/security-domain configuration and transitions.
-- Narrowly scoped access to hardware-dependent services (for example entropy-peripheral interfaces, interrupt handling, and hardware-specific reset information).
-- Platform-appropriate mechanisms for externally requested zeroization, memory-region retirement, and protection of sensitive locations outside a primitive's direct control.
+- Ownership of target-specific reset, fault and relevant interrupt-vector entry points, early platform exception handling, hardware fault/reset-cause capture and controlled handoff to the MCL where the processor remains capable of execution.
+- Narrowly scoped access to other hardware-dependent services, including entropy-peripheral interfaces and reset-status mechanisms.
+- Platform-appropriate mechanisms for MCL-requested zeroization, memory-region retirement, and protection of sensitive locations outside a primitive's direct control.
 - The justification, containment, review, and platform testing of necessary `unsafe` Rust operations.
 
 
 ### 4.3 Module Control Layer (MCL)
 
-The Module Control Layer is only responsible for the following:
+The Module Control Layer has these principal responsibilities:
 
-- The cryptographic boundary and all operations that move data, control, and error reporting across the defined interfaces on the boundary.
-- The finite state machine and enforcing allowable state transitions.
-- Security logic to implement the defined security configuration.
-- Coordinating between the PIL to obtain appropriate resources (e.g. protected memory, hardware-sourced entropy) and the primitives to execute the cryptographic operations.
+- Control of the module's defined external service interfaces, including service inputs, outputs, authorization and status reporting. The MCL is not by itself the complete cryptographic boundary.
+- Ownership of the module finite-state machine and enforcement of allowable state transitions.
+- Enforcement of the selected security configuration, including output inhibition, SSP lifecycle policy, and required self-test sequencing.
+- Coordination with the PIL for bounded protected memory, hardware-source access, and fault/reset handoff; and with primitives for algorithm execution.
+- Assessment of retained FSM state following a reset or fault. Unverified or inconsistent retained state shall not be trusted to justify resumption of cryptographic services.
 
 **NOTE:** The actual cryptographic boundary and embodiment remain an explicitly open design matter (Q-001).
 
@@ -102,22 +103,99 @@ The following contracts describe **architectural requirements**, not completed A
 | --- | --- | --- | --- |
 | Inputs and outputs | Specify formats, lengths, alignment and overlap restrictions; reject invalid inputs with defined behavior | Make protected regions accessible only to authorized call paths | Authorize services, validate caller permissions, classify boundary-crossing data |
 | Working storage | Declare bounded scratch/state needs; use only explicitly supplied or bounded local storage | Reserve and protect selected fixed regions, including sensitive stacks/scratch | Allocate resources to operations, prevent conflicting reuse and aliasing |
-| Randomness | Specify exact entropy/randomness inputs required | Provide target-specific hardware source access and error/status information | Establish approved construction/qualification, reseed policy and service availability |
+| Randomness | Document algorithm-specific seed, pseudorandom-bit or entropy-input requirements; do not access the hardware source implicitly | Provide target-specific entropy-source access and status | Qualify/instantiate the RBG, authorize random inputs, enforce reseed policy and service availability |
 | SSP handling | Identify sensitive intermediates and cleanup contract; avoid uncontrolled copies | Protect, isolate and externally zeroize applicable memory regions | Own SSP inventory, usage authorization, lifetime, import/export and module zeroization policy |
-| Failures | Return explicit algorithm errors; document state and output after failure | Report hardware/access/reset failures; fail closed within its defined mechanism | Translate errors into module state, output inhibition and recovery rules |
-| Tests and evidence | Supply algorithm-level tests, vectors and build/implementation records | Supply target isolation, memory, cleanup and hardware configuration evidence | Initiate all POSTs, integration tests, module self-tests and provide validation evidence |
+| Failures | Distinguish specified negative outcomes from unexpected internal faults; document state and outputs | Own applicable vector/exception entry, capture fault context, provide trusted cleanup mechanisms | Treat unexpected primitive faults as potential active attacks; inhibit services and order zeroization of every region the primitive could modify |
+| Tests and evidence | Supply algorithm-level tests, vectors and build/implementation records | Supply target isolation, exception/reset-path, memory cleanup and hardware configuration evidence | Orchestrate applicable module self-tests and integration tests; produce module-level validation evidence |
 
-### 5.1 Memory lifetime and cleanup
+### 5.1 Operation lifecycle, faults and sensitive-memory cleanup
 
-1. **On PowerOn, Reset, or POST request** The MCL shall request that the PIL zeroize all temporary storage, then set the state appropriately and begin POST.
-2. **Before invocation:** The MCL receives a request via a defined interface to perform an operation and possibly the associated data. The MCL determines if the operation is permitted and adjusts the finite state machine accordingly. The MCL determines required workspace sizes, obtains appropriate PIL-managed or otherwise contract-compliant memory, and enforces exclusive access and permitted lifetimes.
-3. **During invocation:** The primitive accesses only memory authorized by its API contract. Primitive-local state, copies, stack usage and scratch sensitivity are documented. A mutable buffer must not be assumed non-overlapping with another buffer unless the API or language borrowing rules establish that fact.
-4. **On normal completion:** the primitive performs any required cleanup of its own sensitive temporary state before reporting completion. The MCL then requests that the PIL zeroize the memory that is no longer being used. Note that reporting errors in input data, failure of signature verification, etc. are still considered normal completion.
-5. **On error:** if the primitive detects an error in its own operation or triggers an error condition (e.g. illegal access) the MCL shall assume that all memory that the primitive had access to is possibly compromized and it shall request that the PIL zeroize all memory that was modifiable by the primitive. The MCL will then set the finite state machine accordingly and assert the error condition on the appropriate interface.
+The module distinguishes **specified service outcomes** from **unexpected internal
+errors and processor faults**. Rejection of invalid input, unsuccessful signature
+verification and other documented negative results are ordinary service
+outcomes, not evidence of an implementation fault. An internal error that should
+not occur during correct operation is treated **by policy as a possible active
+attack**, irrespective of whether an attack has been demonstrated.
 
-For sensitive memory, a source-level assignment to zero does not, by itself, prove that compiler-optimized machine code erased every copy. Implementation-specific zeroization primitives, generated-code review, target tests, interrupt/abort paths, registers, hardware buffers and stack copies are subjects for evidence. Neither safe Rust nor static allocation alone establishes complete erasure.
+1. **Reset and early entry:** On power-on, processor reset or relevant
+   exception entry, the PIL owns the applicable target vectors and early handler.
+   Where the processor remains capable of controlled execution, the PIL obtains
+   the available reset/fault context, establishes a sufficiently trustworthy
+   execution path, and transfers control and fault information to the MCL.
+   Cryptographic services and sensitive outputs remain inhibited until the
+   MCL has established that operation is permitted. The MCL may inspect retained
+   FSM state but shall not rely on it without an appropriate integrity and
+   validity determination. If that determination fails, the conservative
+   recovery and zeroization policy applies. The distinct rules for cold reset,
+   warm reset, watchdog reset and processor faults remain open under Q-008.
 
-The adopted direction is that **portable primitives scrub their own sensitive stack/scratch where applicable; the PIL provides external, platform-dependent zeroization mechanisms; the MCL coordinates SSP lifecycle and operator-requested zeroization**. Exact contracts must be established per algorithm and target. See D-008–D-010, SSP-007/008/012, and Q-008.
+2. **Before invocation:** The MCL authorizes the requested service, checks
+   relevant FSM constraints and assigns the required working regions under PIL
+   memory and access-control mechanisms. The module maintains **trusted
+   records independent of the primitive** identifying every memory region
+   that the primitive can modify under its actual execution configuration,
+   including writable caller buffers, working storage and applicable stacks.
+   Region lifetimes, aliasing and concurrency must satisfy the primitive API
+   contract.
+
+3. **During invocation:** The primitive accesses only memory permitted by its
+   documented contract. Primitive-created temporary state and possible copies,
+   register values, stack usage and workspace sensitivity are documented.
+   Writable buffers are not assumed disjoint unless language or API
+   guarantees establish this.
+
+4. **On specified completion:** The primitive performs its documented
+   cleanup of sensitive temporary state. The MCL then directs the PIL to
+   zeroize released sensitive regions. Retained, authorized outputs and
+   long-lived SSPs are governed by their explicit lifecycle contracts, rather
+   than accidentally erased as scratch. Documented negative service outcomes
+   follow this completion path.
+
+5. **On unexpected internal error or fault:** The module assumes a possible
+   active attack. The MCL inhibits affected cryptographic services and
+   commands the PIL to **zeroize every memory region that the primitive was
+   capable of modifying**, without narrowing the wipe to locations believed
+   to have been altered. The applicable set is determined from trusted
+   resource/access records and actual protections, not from metadata supplied
+   by the failed primitive. The set includes writable output buffers and
+   sensitive regions where the primitive had write capability. Faults that
+   bypass normal return reach the PIL through the applicable hardware
+   exception/reset path; whenever the MCL can safely execute, the PIL passes
+   the fault context and control to the MCL for the security response. The
+   module shall not resume affected services before the prescribed
+   zeroization, safe reinitialization and applicable tests have succeeded.
+
+6. **When normal recovery cannot execute:** A fault may prevent the MCL or
+   even the PIL from executing. The available platform mechanisms must
+   prevent affected state from being used or exposed through subsequent
+   services until the required zeroization has been established. The target
+   design must analyze retained SRAM, reset-cause evidence, persistent FSM
+   metadata, early-boot access controls, interrupted cleanup and watchdog
+   paths. This architecture does not claim that software can erase memory
+   while the processor cannot execute or power is unavailable. Trusted
+   fallback behavior and the conditions for safe recovery are to be
+   specified and tested under Q-008.
+
+7. **Self-test requests:** Pre-operational tests, conditional algorithm
+   self-tests and operator-initiated/on-demand tests have separately specified
+   state-transition and output-inhibition requirements. Invoking a test does
+   not by itself imply indiscriminate erasure of all live SSPs. Any fault
+   detected by a test invokes the applicable module error policy. Detailed
+   sequencing belongs to the future MCL FSM specification.
+
+For sensitive memory, a source-level assignment to zero is not evidence that
+compiler-optimized machine code erased every copy. Implementation-specific
+wipes, generated-code review, target tests, exception paths, registers, hardware
+buffers, DMA activity and stack copies require their own evidence. Neither safe
+Rust nor static allocation alone establishes complete erasure.
+
+**Memory-cleanup division:** Portable primitives implement and document
+local sensitive-temporary cleanup; the PIL implements externally controlled
+platform-dependent zeroization, including fault/reset execution paths; the MCL
+decides and coordinates SSP lifecycle, module error response and the complete
+primitive-writable-region wipe required by an unexpected fault. This preserves
+D-008–D-010 and the scope of SSP-007/008/012 while leaving platform recovery
+details open under Q-008.
 
 ### 5.2 Trust, privilege and safety boundaries
 
@@ -128,7 +206,10 @@ Distinguish at least four concepts:
 - **Module cryptographic boundary:** Established for a specific FIPS 140-3 submission, including the implementation and relevant operational environment.
 - **Physical boundary/perimeter:** Depends on the actual device embodiment and applicable validation requirements.
 
-None is implied by another. In particular, 'secure world' and 'privileged CPU mode' are distinct attributes on applicable Arm microcontrollers. The current engineering preference is small privileged configuration/ISR code with bulk cryptography unprivileged where feasible in the secure domain (D-007); exact trusted-code inclusion, hardware mappings, and evaluation remain Q-001 and related target questions.
+None is implied by another; in particular, the MCL's control of the external
+service interfaces does not itself define the complete module cryptographic
+boundary. 'Secure world' and 'privileged CPU mode' are distinct attributes on
+applicable Arm microcontrollers. The current engineering preference is small privileged configuration/ISR code with bulk cryptography unprivileged where feasible in the secure domain (D-007); exact trusted-code inclusion, hardware mappings, and evaluation remain Q-001 and related target questions.
 
 ### 5.3 Secret transfers and output policies
 
@@ -136,7 +217,7 @@ The MCL may receive plaintext secrets as input. However, it shall enforce the ad
 
 ## 6. Random-bit generation, state, and services
 
-Cryptographic primitives that require random input shall make that dependence explicit. The **algorithmic DRBG mechanism** can be implemented as a portable component; its **instantiation, entropy credit, hardware-source integration, reseed policy, service dispatch and failure response** are module/integration responsibilities, with hardware mechanisms provided by the PIL.
+Cryptographic primitives shall make any seed, entropy or pseudorandom-input dependency explicit and algorithm-specific. A portable **DRBG mechanism** may perform the deterministic algorithm and accept explicitly supplied instantiation/reseed inputs, while **entropy qualification, hardware-source integration, approved-construction claims, instantiation and reseed policy, service dispatch and failure response** belong to the MCL and reference-module integration, using platform mechanisms provided by the PIL.
 
 The current Workbook contains selected design directions for hardware entropy, SHA-256 Hash_DRBG, output allowance, and asynchronous prefetch (D-002, D-003, D-006). This document does **not** restate their parameter values as independent requirements. The formal RBG claim, tested device match, demand bounds, concurrency, and recovery remain open (Q-002, Q-003, Q-006, Q-008).
 
@@ -158,8 +239,8 @@ Evidence is developed at the level where its claim can be established:
 | --- | --- | --- |
 | Algorithm conformance, API behavior and negative cases | Primitive | Identify the exact implementation/parameters, perform applicable independent testing and satisfy any additional module obligations |
 | Stack/scratch bounds, error handling, local cleanup | Primitive | Confirm behavior under the selected compiler, build flags and target environment |
-| Linker/memory map, isolation, privilege, DMA/debug access, hardware source conditions | PIL | Verify configuration and inclusion of all trusted mechanisms within the selected boundary |
-| Approved services/modes, SSP lifecycle, zeroization service, module error state and output inhibition | MCL | Specify, implement, test and document the complete module obligations |
+| Linker/memory map, isolation, privilege, DMA/debug access, fault/reset vectors and hardware source conditions | PIL | Verify configuration, retained-state handling and inclusion of all trusted mechanisms within the selected boundary |
+| Approved services/modes, SSP lifecycle, full primitive-writable-region fault zeroization, module error state and output inhibition | MCL with PIL | Specify, implement, test and document the complete module obligations and fault/reset execution paths |
 | Algorithm validation protocols/certificates, CAST/PCT integration and CMVP submission | Module/integrator with laboratory as appropriate | Establish exact validated implementation, operational environment and required program evidence |
 
 Successful project tests, a `no_std` build, or reuse of an entropy-source validation do not confer FIPS 140-3 module validation. Algorithm validation and module validation are distinct. The actual claimed implementation, compiled artifact, environment, and applicable CMVP requirements must be identified and assessed separately.

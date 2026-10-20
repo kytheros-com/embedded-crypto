@@ -27,17 +27,29 @@ The following decisions remain **open**, notwithstanding the agreed three-layer 
 
 The workbook governs their current decision statuses. No implementation may turn an open gate into an unstated assumption.
 
-## 3. Configuration management and review
+## 3. Documentation and assurance reconciliation
 
-ChatGPT has made the following proposals which seem good to me. However, I'm not sure where they belong. They don't seem to fit in the architecture.md since they are process guidance rather than design architecture. Figure out the correct place to document this.
+- [ ] Review and approve `docs/assurance/configuration-management.md`,
+  separating permanent process rules from this task list.
+- [ ] Reconcile the legacy `SR-...` identifiers, revision/retrieval data and
+  source-maintenance rules from the deleted Markdown standards register with
+  the workbook's `Source Register`; preserve any unique information before
+  final acceptance of its deletion. Git history retains the former register.
+- [ ] Reconcile the requirements workbook's source statuses and algorithm
+  coverage against the architectural layer assignments.
+- [ ] Review the provisional `requirement-ownership.csv` mapping and build
+  requirement-to-design-to-test links without changing stable workbook IDs.
+- [ ] Determine whether `project-scope.md`, `architecture.md`, and the
+  reference integration's eventual boundary remain fully consistent.
 
-- Architectural changes shall be proposed and reviewed on a branch before merge to protected `main`.
-- Requirement, decision, source, question and evidence identifiers shall remain stable; add cross-references rather than duplicate authoritative tables.
-- Each change shall identify affected layers, public/internal contracts, threat and leakage assumptions, target configurations, tests, and evidence.
-- If a decision changes normative applicability or the future validation boundary, update the corresponding workbook entries and obtain independent/CSTL assessment when applicable.
-- Changes to supported parameters, memory ownership, secret output, zeroization, randomness, hardware variants, or module services require explicit security-impact review.
-- Implementation and evidence statuses must never be inferred merely from the existence of a design document, CI success, or a completed planning worksheet.
+## 4. MCL finite-state machine — next design activity
 
-## 4. Design-decision and requirement cross-reference
-
-Need to cross reference assurance/architecture.md with the Workbook for consistency and requirements tracing.
+- [ ] Define states and guards for ordinary service outcomes, pre-operational
+  tests, approved services, zeroization and error handling.
+- [ ] Define reset and processor-fault events, PIL vector/handler handoff,
+  requirements for trusting retained FSM state, and conservative recovery.
+- [ ] Specify when the MCL orders zeroization of **every memory region the
+  faulting primitive could modify**, and how the PIL enforces or recovers it
+  under interrupted execution.
+- [ ] Cross-reference the resulting FSM requirements to D-007–D-009, Q-001,
+  Q-008 and applicable workbook evidence IDs before implementation.

@@ -7,6 +7,13 @@ implementations in Rust, together with technical evidence intended to support
 their review, integration, testing, and potential use in cryptographic modules
 submitted for third-party validation.
 
+The project may also develop a target-specific Platform Integration Layer
+(PIL) and Module Control Layer (MCL) for a reference cryptographic module.
+These layers are described in [architecture.md](architecture.md). Their
+development does not make the reusable primitives or reference integration
+independently validated, and their inclusion in a future validated module
+depends on that module's identified cryptographic boundary.
+
 The project is designed to make the algorithm implementations and their
 supporting evidence understandable and usable by:
 
@@ -16,10 +23,12 @@ supporting evidence understandable and usable by:
 * system integrators; and
 * other technically qualified users.
 
-Planned algorithm coverage is recorded in the project standards register. An
-algorithm, parameter set, or operation is not considered within the supported
-scope until its applicable specifications, parameter sets, operations, and
-intended uses have been identified there.
+Planned algorithms, parameter sets and operations are recorded in the
+`Source Register` and `Algorithm Profile` worksheets of
+[the CMVP requirements workbook](CMVP_Level_1_Software_Requirements_Matrix.xlsx).
+These worksheets, rather than a duplicate Markdown standards register,
+provide the authoritative planning record. A planned capability is not
+represented as implemented or validated without separate evidence.
 
 ## Project Status
 
@@ -51,13 +60,15 @@ a particular operational environment. Source code compiled into different
 binary artifacts or incorporated into different module configurations may
 require separate testing or validation.
 
-This repository therefore provides validation-supporting algorithm components
-and evidence. It does not define a universally validated cryptographic module.
+This repository develops validation-supporting algorithm components and
+evidence, and may additionally develop a concrete embedded reference
+integration. Neither a reusable component nor an integration is a universally
+validated cryptographic module.
 
-A client seeking FIPS 140-3 validation remains responsible for working with an
-accredited Cryptographic and Security Testing Laboratory to determine the
-applicable requirements and the testing, evidence, and submission procedures
-for the client's specific module.
+Whoever submits an actual module for FIPS 140-3 validation, whether the
+reference-module developer or a third-party integrator, remains responsible
+for working with an accredited Cryptographic and Security Testing Laboratory
+to establish applicable requirements and evidence for that specific module.
 
 ## Intended Assurance Artifacts
 
@@ -90,116 +101,122 @@ recorded separately in the project requirements and evidence records.
 
 ## Division of Responsibilities
 
+The columns below distinguish **reusable algorithm components** from
+**module-level integration**. A reference MCL/PIL integration developed within
+this repository assumes the module-integrator responsibilities applicable to
+that reference embodiment; a third-party integrator independently assumes
+those responsibilities for its own implementation and security boundary.
+
 * **Algorithm specification**
 
-  * **This project:** Identify and trace applicable requirements.
-  * **Integrating module:** Confirm that selected algorithms and uses are
+  * **Reusable components:** Identify and trace applicable requirements.
+  * **Module integrator:** Confirm that selected algorithms and uses are
     permitted.
 
 * **Algorithm implementation**
 
-  * **This project:** Provide reviewed source and identified release
+  * **Reusable components:** Provide reviewed source and identified release
     artifacts.
-  * **Integrating module:** Incorporate an exact implementation into the
+  * **Module integrator:** Incorporate an exact implementation into the
     module.
 
 * **Development testing**
 
-  * **This project:** Provide documented automated tests.
-  * **Integrating module:** Evaluate applicability and perform integration
+  * **Reusable components:** Provide documented automated tests.
+  * **Module integrator:** Evaluate applicability and perform integration
     testing.
 
 * **CAVP testing support**
 
-  * **This project:** Provide test adapters and capability information where
+  * **Reusable components:** Provide test adapters and capability information where
     practical.
-  * **Integrating module:** Obtain official testing through an authorized
+  * **Module integrator:** Obtain official testing through an authorized
     laboratory.
 
 * **Cryptographic algorithm self-tests**
 
-  * **This project:** Provide vectors, callable implementation paths, and
+  * **Reusable components:** Provide vectors, callable implementation paths, and
     integration guidance.
-  * **Integrating module:** Control invocation, pass/fail determination,
+  * **Module integrator:** Control invocation, pass/fail determination,
     service gating, and failure response.
 
 * **Cryptographic boundary**
 
-  * **This project:** Describe component boundaries and dependencies.
-  * **Integrating module:** Define and document the validated module
+  * **Reusable components:** Describe component boundaries and dependencies.
+  * **Module integrator:** Define and document the validated module
     boundary.
 
 * **Approved mode**
 
-  * **This project:** Avoid making an independent approved-mode claim.
-  * **Integrating module:** Define and enforce approved operation.
+  * **Reusable components:** Avoid making an independent approved-mode claim.
+  * **Module integrator:** Define and enforce approved operation.
 
 * **Roles and services**
 
-  * **This project:** Describe algorithm operations exposed by the
+  * **Reusable components:** Describe algorithm operations exposed by the
     component.
-  * **Integrating module:** Define module roles, services, authorization, and
+  * **Module integrator:** Define module roles, services, authorization, and
     authentication.
 
 * **Service indication**
 
-  * **This project:** Document algorithm success and failure behavior.
-  * **Integrating module:** Provide the required approved-service
+  * **Reusable components:** Document algorithm success and failure behavior.
+  * **Module integrator:** Provide the required approved-service
     indication.
 
 * **Module state machine**
 
-  * **This project:** Document component state transitions.
-  * **Integrating module:** Define and enforce the module finite-state
+  * **Reusable components:** Document component state transitions.
+  * **Module integrator:** Define and enforce the module finite-state
     model.
 
 * **Software or firmware integrity**
 
-  * **This project:** Support deterministic identification of project
+  * **Reusable components:** Support deterministic identification of project
     artifacts.
-  * **Integrating module:** Implement and validate the module integrity
+  * **Module integrator:** Implement and validate the module integrity
     mechanism.
 
 * **Operational environment**
 
-  * **This project:** Record environments used for project testing.
-  * **Integrating module:** Define and test every claimed module operational
+  * **Reusable components:** Record environments used for project testing.
+  * **Module integrator:** Define and test every claimed module operational
     environment.
 
 * **Sensitive security parameters**
 
-  * **This project:** Document algorithm state and possible sensitivity.
-  * **Integrating module:** Classify, protect, store, enter, output, and
+  * **Reusable components:** Document algorithm state and possible sensitivity.
+  * **Module integrator:** Classify, protect, store, enter, output, and
     zeroize module SSPs.
 
 * **Entropy and random-bit generation**
 
-  * **This project:** Document any algorithm dependencies.
-  * **Integrating module:** Provide validated entropy and random-bit
+  * **Reusable components:** Document any algorithm dependencies.
+  * **Module integrator:** Provide validated entropy and random-bit
     generation behavior.
 
 * **Physical security**
 
-  * **This project:** Make no general claim.
-  * **Integrating module:** Satisfy device-specific physical-security
+  * **Reusable components:** Make no general claim.
+  * **Module integrator:** Satisfy device-specific physical-security
     requirements.
 
 * **Error state and output inhibition**
 
-  * **This project:** Provide explicit component errors where applicable.
-  * **Integrating module:** Enforce module-wide error behavior and output
+  * **Reusable components:** Provide explicit component errors where applicable.
+  * **Module integrator:** Enforce module-wide error behavior and output
     inhibition.
 
 * **Installation and operation**
 
-  * **This project:** Provide component integration guidance.
-  * **Integrating module:** Provide module installation, initialization,
+  * **Reusable components:** Provide component integration guidance.
+  * **Module integrator:** Provide module installation, initialization,
     administration, and user guidance.
 
 * **CMVP submission**
 
-  * **This project:** Supply relevant component evidence.
-  * **Integrating module:** Contract with a laboratory and own the module
+  * **Reusable components:** Supply relevant component evidence.
+  * **Module integrator:** Contract with a laboratory and own the module
     submission.
 
 
@@ -278,20 +295,13 @@ Absence of an identified defect is not evidence that no defect exists.
 
 ## Change Control
 
-Security-relevant changes require an assessment of their effect on:
+Changes to architecture, algorithms, interfaces, security-relevant
+implementations, requirements and assurance evidence require documented
+impact review appropriate to their scope. The detailed process and source
+maintenance rules are recorded in
+[configuration-management.md](configuration-management.md), which is under
+design review. A document's presence in the repository or a successful CI
+run does not establish implementation completion or validation.
 
-* applicable specification and assurance requirements;
-* supported operations and parameter sets;
-* public and internal interfaces;
-* algorithm behavior;
-* implementation variants;
-* tests and expected results;
-* self-test integration;
-* timing and memory behavior;
-* operational environments;
-* build artifacts;
-* prior review evidence; and
-* potential CAVP or CMVP testing.
-
-Changes to this assurance scope require review through the repository's normal
-pull-request process.
+Changes to this assurance scope are reviewed through the repository's
+branch and pull-request process.
