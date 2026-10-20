@@ -9,7 +9,9 @@ submitted for third-party validation.
 
 The project may also develop a target-specific Platform Integration Layer
 (PIL) and Module Control Layer (MCL) for a reference cryptographic module.
-These layers are described in [architecture.md](architecture.md). Their
+These layers are described in [architecture.md](architecture.md), and the
+reference module's fixed logical service interfaces are specified in
+[module-interfaces.md](../design/module-interfaces.md). Their
 development does not make the reusable primitives or reference integration
 independently validated, and their inclusion in a future validated module
 depends on that module's identified cryptographic boundary.
@@ -69,6 +71,22 @@ Whoever submits an actual module for FIPS 140-3 validation, whether the
 reference-module developer or a third-party integrator, remains responsible
 for working with an accredited Cryptographic and Security Testing Laboratory
 to establish applicable requirements and evidence for that specific module.
+
+## Reference module logical interface boundary
+
+The optional reference module uses five separate fixed-memory mailbox
+payloads for control input, control output, status output, data input
+and data output. The MCL exclusively mediates these logical service
+interfaces while the platform-specific PIL enforces memory isolation,
+atomic synchronization and fault/reset entry. Portable cryptographic
+primitive crates accept authorized internal buffers, **never pointers
+to externally accessible reference-module mailboxes**.
+
+The logical service boundary does not itself establish the eventual
+FIPS 140-3 cryptographic boundary or physical perimeter. No trusted
+channel/path implementation is committed for the initial design.
+Mailbox protocols and hardware effectiveness remain subject to
+further design and later verification.
 
 ## Intended Assurance Artifacts
 
@@ -142,9 +160,11 @@ those responsibilities for its own implementation and security boundary.
 
 * **Cryptographic boundary**
 
-  * **Reusable components:** Describe component boundaries and dependencies.
-  * **Module integrator:** Define and document the validated module
-    boundary.
+  * **Reusable components:** Describe component boundaries and dependencies;
+    do not depend on external-interface mailboxes.
+  * **Module integrator:** Define and document the formal validated module
+    boundary. For the reference implementation, the MCL mediates the five
+    mailbox-based logical interfaces and the PIL enforces their access controls.
 
 * **Approved mode**
 
@@ -204,8 +224,8 @@ those responsibilities for its own implementation and security boundary.
 * **Error state and output inhibition**
 
   * **Reusable components:** Provide explicit component errors where applicable.
-  * **Module integrator:** Enforce module-wide error behavior and output
-    inhibition.
+  * **Module integrator:** Enforce module-wide error and output-inhibition
+    behavior, including restrictions on externally visible mailbox contents.
 
 * **Installation and operation**
 
