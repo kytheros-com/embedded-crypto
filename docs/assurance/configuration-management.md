@@ -43,6 +43,7 @@ silently copying or overriding entries.
   subject.
 - Record supersession, changed applicability and source revisions
   explicitly; do not rewrite history by silently repurposing an ID.
+- Reconcile the accepted mailbox architecture and platform-independent PIL protection properties with the workbook's current design decisions, questions and evidence plan before claiming complete traceability.
 - Link each applicable requirement to design owners and component-level
   implementation and test evidence. For obligations shared across layers,
   preserve the parent requirement ID and distinguish the separate evidence
@@ -54,10 +55,11 @@ silently copying or overriding entries.
 
 For each security-relevant change, assess as applicable:
 
-- module, primitive and PIL interfaces and authorization boundaries;
+- module, primitive and PIL interfaces, five mailboxes, their atomic synchronization objects, and authorization boundaries;
+- inbound snapshot coherence and safe outbound publication even when external clients ignore synchronization rules;
 - SSP lifetimes, permitted read/write regions, aliases and memory ownership;
 - cleanup/zeroization on completion, internal fault, reset or interruption;
-- fault/exception-vector control, trusted recovery and retained FSM state;
+- fault/exception-vector control, trusted recovery, retained FSM state, and mailbox transaction invalidation;
 - randomness/entropy requirements and DRBG construction or configuration;
 - supported algorithm parameters, implementations and compiled variants;
 - side-channel and fault assumptions, compiler behavior and stack/RAM usage;
