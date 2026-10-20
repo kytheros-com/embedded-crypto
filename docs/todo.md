@@ -27,7 +27,25 @@ The following decisions remain **open**, notwithstanding the agreed three-layer 
 
 The workbook governs their current decision statuses. No implementation may turn an open gate into an unstated assumption.
 
-## 3. Documentation and assurance reconciliation
+## 3. Logical boundary and PIL design gates
+
+- [ ] Define fixed mailbox layout and protocol records for five separate
+  logical-interface payloads; retain the MCL/external permission matrix.
+- [ ] Specify each mailbox's independent atomic synchronization object,
+  permissions, producer/consumer transitions and acquire/release ordering.
+- [ ] Establish a coherent MCL input snapshot even if external writers
+  disregard the semaphore protocol.
+- [ ] Prevent observation of partial, stale, unauthorized or state-inhibited
+  outbound data by external readers with read-only mailbox permission.
+- [ ] Design mailbox transaction invalidation/recovery following errors,
+  resets and interrupts without trusting stale retained memory.
+- [ ] Define the control/status/cryptographic-output message classification,
+  and deferred mailbox sizes, formats and checksum/EDC threat model.
+- [ ] Validate the representative STM32U5 PIL memory isolation, DMA/bus
+  protections, reset paths and relevant errata after hardware arrives.
+  This does not block continued architecture design.
+
+## 4. Documentation and assurance reconciliation
 
 - [ ] Review and approve `docs/assurance/configuration-management.md`,
   separating permanent process rules from this task list.
@@ -37,13 +55,21 @@ The workbook governs their current decision statuses. No implementation may turn
   final acceptance of its deletion. Git history retains the former register.
 - [ ] Reconcile the requirements workbook's source statuses and algorithm
   coverage against the architectural layer assignments.
+- [ ] Record today's five-mailbox design, atomic synchronization contracts
+  and PIL isolation requirements in the workbook's existing requirements,
+  decisions, questions and evidence records. The binary workbook is
+  intentionally not modified by the documentation-only GitHub update.
 - [ ] Review the provisional `requirement-ownership.csv` mapping and build
   requirement-to-design-to-test links without changing stable workbook IDs.
 - [ ] Determine whether `project-scope.md`, `architecture.md`, and the
   reference integration's eventual boundary remain fully consistent.
 
-## 4. MCL finite-state machine — next design activity
+## 5. MCL finite-state machine — after boundary interface design
 
+- [ ] Preserve the normative FSM requirements inventory recorded in
+  `docs/assurance/fsm-requirements-notes.md`.
+- [ ] Derive message-available, accepted, rejected, completed and published
+  events after the mailbox transfer protocol is defined.
 - [ ] Define states and guards for ordinary service outcomes, pre-operational
   tests, approved services, zeroization and error handling.
 - [ ] Define reset and processor-fault events, PIL vector/handler handoff,
