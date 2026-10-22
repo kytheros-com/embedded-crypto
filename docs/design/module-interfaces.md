@@ -1,7 +1,7 @@
 # Reference Module Logical Interface Contract
 
 **Status:** Architectural baseline; transfer protocol under design  
-**Date:** 2026-10-20  
+**Date:** 2026-10-22  
 **Scope:** Embedded reference integration, not standalone primitive crates
 
 ## 1. Architectural boundary
@@ -37,12 +37,13 @@ selected PIL, not on the portable MCL.
 | **Data input** | Service input data, including authorized plaintext, ciphertext, keys/SSPs, authentication and public data | RO | RW | None |
 | **Data output** | Authorized service results such as digests, signatures, public keys, ciphertext and permitted ordinary plaintext | RW | RO | None |
 
-RO means read-only and RW means read/write. These are **maximum payload
-capabilities**, not a promise that a reader always has permission to observe
-sensitive data at every instant. Primitive permission **None** excludes
-reads, writes and execution. The PIL may perform narrowly scoped privileged
+RO means read-only and RW means read/write. These are the normal **payload
+access permissions**, which remain in effect regardless of mailbox ownership
+or semaphore state. Primitive permission **None** excludes reads, writes and
+execution. The PIL may perform narrowly scoped privileged
 maintenance/zeroization operations outside the normal MCL/external payload
 permissions. A target shall not weaken this matrix to accommodate a device.
+The MCL does not rely on external clients to obey the semaphore protocol.
 
 Only the MCL copies between these externally addressable payloads and
 protected internal storage, after authorization and validation. No external
@@ -65,33 +66,67 @@ acknowledge it: MCL acknowledgments travel via control output and/or
 authorized semaphore transitions. External acknowledgments travel via
 control input and/or authorized semaphore transitions.
 
-**The exact protocol has not been chosen.** In particular, atomic semaphore
-operations alone cannot stop an untrusted external writer with continuing
-payload-write permission from changing bytes during an MCL copy. The MCL must
-establish a coherent and validated internal input snapshot before invoking
-a primitive, using an implementation whose threat assumptions are explicit.
+**Adversarial-client model:** The external caller, including the orchestrating
+host, may be compromised. It may supply arbitrary data, violate the handshake,
+repeatedly change input bytes, read output before notification, reuse stale
+messages, or decline to consume results. Semaphores define *protocol
+ownership and validity* for cooperating participants; they neither
+authenticate the client nor constrain its physical payload permissions.
 
-Likewise, an external reader with read permission can observe a partially
-written outbound payload unless hardware protection or another proven
-publication mechanism prevents this. A completion flag alone does not
-guarantee output secrecy or atomic publication against an uncooperative
-reader. The MCL/PIL design shall prevent observation of partial, stale,
-unauthorized or state-inhibited results. **Input stabilization and output
-visibility gating remain explicit open design gates**, not implemented
-assurances.
+**Input acceptance:** On a properly recognized request event, the MCL shall
+copy a bounded candidate request and data payload into protected internal
+storage. It shall perform all security-relevant validation on that internal
+copy (including message structure, bounds, service parameters, role/state
+authorization and applicable SSP-entry policy), and dispatch primitives
+using **only** the validated internal representation. The MCL shall not
+re-read mutable external fields to govern an operation already accepted.
+An adversarial client can alter its mailbox *during* the copy; this may
+produce a mixed or inconsistent candidate. The MCL is not required to
+reconstruct the client's intended message or establish that all bytes
+existed simultaneously. Instead it must treat the resulting snapshot as
+arbitrary untrusted bytes, perform bounds-safe acquisition and validation,
+and reject any candidate that violates the service contract. A
+semantically valid but adversarially chosen candidate is still untrusted;
+the MCL must remain secure when processing it. An invalid request is
+normally a specified service rejection, not an unexpected primitive fault.
+
+**Output publication:** The MCL verifies operation success, authorization,
+security classification and the current module state **before copying**
+a result into an externally readable output mailbox. It shall never place
+plaintext CSPs, unauthorized SSPs or other prohibited information into
+mailbox payloads, even temporarily. The MCL then copies the authorized
+result and **publishes** the message only by completing the specified
+atomic semaphore transition with the required memory ordering. Before
+that transition, a client's read has **no valid message semantics**:
+partial or stale bytes are not an accepted module result. The module
+does not promise coherent early reads or prevent subsequent alteration
+or misuse of information by an external recipient.
+
+**Normative caveat:** These publication semantics do **not** waive the
+requirements to inhibit data output and, as applicable, control output
+during specified self-test, manual SSP-entry, loading, zeroization and
+error conditions (ISO/IEC 19790 AS03.07 and AS03.10 and applicable CMVP
+guidance). An externally readable memory region may constitute a data
+output path even when a semaphore says "not published". The actual
+mailbox placement, write behavior, stale-content sanitization, gating
+and validation evidence must demonstrate those requirements. Any
+remaining feasibility/compliance issue is an **open design gate**, not
+silently resolved by redefining publication.
 
 ## 4. Required information-flow policy
 
 - Control input: commands, service selections, data-ready and caller
   acknowledgment events, subject to roles, valid FSM state and message checks.
-- Data input: bounded payloads that the MCL copies into internal storage
-  before operation; the MCL classifies all SSP and authentication inputs.
+- Data input: untrusted, bounded payloads. The MCL copies a candidate into
+  internal storage and validates **that internal copy** before primitive use;
+  it classifies all SSP and authentication inputs.
 - Control output: allowed MCL-originated controls and acknowledgments; it
   shall not serve as a covert data-output path.
 - Status output: defined module/service status and approved/error indicators;
   it shall not reveal SSPs or bypass data-output inhibition.
-- Data output: authorized service results only after the MCL has validated
-  completion, output classification and state-dependent release conditions.
+- Data output: after operation completion, authorization, sensitivity and
+  state checks, the MCL copies only permitted results into the output mailbox;
+  the message becomes **published** upon the defined atomic transition.
 
 The output-inhibition obligations of ISO/IEC 19790 AS03.07 and AS03.10
 apply independently of whether the caller obeys mailbox semaphores.
@@ -104,6 +139,18 @@ Hardware-originating faults, resets, interrupts and power events are
 handled at the appropriate PIL entry points and presented internally to
 the MCL; their classification relative to the *formal* module boundary
 is a separate Q-001 decision. They are not hidden service-data mailboxes.
+
+### 4.1 Scope of SSP import and protected export
+
+For the current Level 1 reference design, plaintext SSP entry remains
+permitted *subject to the specific SSP/service contract*, but plaintext
+CSP export is prohibited by project policy. Encrypted SSP backup does not
+guarantee confidentiality against a compromised host that can select or
+learn the password used to derive its wrapping key. This is a documented
+operational/threat-model limitation, **not** a claim that FIPS Level 1
+necessarily requires such exposure. An independently authorized recovery
+authority or trusted recipient credential infrastructure is outside the
+current reference scope.
 
 ## 5. Portability and evidence
 
@@ -125,8 +172,9 @@ obligations; mailbox plans are not implementation proof.
 
 Unsettled: actual addresses and sizes; data/control/status record fields;
 number of outstanding requests; semaphore representation and privileges;
-memory-ordering implementation; coherent snapshot against a non-cooperating
-writer; outbound visibility gating; fault/reset transaction recovery;
+memory-ordering implementation; bounds-safe snapshot and validation rules;
+publication sequencing and the CMVP-compliant treatment of physically
+readable output during required inhibition; fault/reset transaction recovery;
 timeouts; message framing and maximum lengths; checksums and control/status
 error-detecting codes. Unkeyed checksums/EDCs can detect some accidental
 corruption but do not authenticate a malicious sender.

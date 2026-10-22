@@ -56,7 +56,7 @@ silently copying or overriding entries.
 For each security-relevant change, assess as applicable:
 
 - module, primitive and PIL interfaces, five mailboxes, their atomic synchronization objects, and authorization boundaries;
-- inbound snapshot coherence and safe outbound publication even when external clients ignore synchronization rules;
+- bounds-safe input snapshot and validation against adversarial races; authorization **before** outbound copying; semaphore-defined publication semantics; protection of prohibited SSPs and normative data/control-output inhibition even when external clients ignore synchronization rules;
 - SSP lifetimes, permitted read/write regions, aliases and memory ownership;
 - cleanup/zeroization on completion, internal fault, reset or interruption;
 - fault/exception-vector control, trusted recovery, retained FSM state, and mailbox transaction invalidation;

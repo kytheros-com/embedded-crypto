@@ -85,8 +85,14 @@ to externally accessible reference-module mailboxes**.
 The logical service boundary does not itself establish the eventual
 FIPS 140-3 cryptographic boundary or physical perimeter. No trusted
 channel/path implementation is committed for the initial design.
-Mailbox protocols and hardware effectiveness remain subject to
-further design and later verification.
+External callers, including a compromised orchestrating host, are not
+trusted to follow mailbox protocols. MCL service decisions use validated
+internal input copies; it checks outbound information before copying it
+into externally readable mailbox memory and publishes the message through
+the defined atomic synchronization step. Early external reads do not
+constitute valid published results, but prohibited SSP disclosure and
+normative output inhibition remain forbidden. Mailbox protocols and
+hardware effectiveness remain subject to further design and verification.
 
 ## Intended Assurance Artifacts
 

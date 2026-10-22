@@ -33,14 +33,24 @@ The workbook governs their current decision statuses. No implementation may turn
   logical-interface payloads; retain the MCL/external permission matrix.
 - [ ] Specify each mailbox's independent atomic synchronization object,
   permissions, producer/consumer transitions and acquire/release ordering.
-- [ ] Establish a coherent MCL input snapshot even if external writers
-  disregard the semaphore protocol.
-- [ ] Prevent observation of partial, stale, unauthorized or state-inhibited
-  outbound data by external readers with read-only mailbox permission.
+- [ ] Specify bounded acquisition and internal-only validation of untrusted
+  input, including adversarial concurrent writes, torn snapshots, malformed
+  control records and refusal to re-read accepted external request fields.
+- [ ] Define the atomic output-publication event and require authorization,
+  successful completion, classification and state checks before *any* copy
+  to externally readable mailboxes. Do not require coherent early reads.
+- [ ] Verify that the resulting fixed-permission mailboxes do not disclose
+  prohibited SSPs or violate CMVP data/control-output inhibition in error,
+  pre-operational testing, zeroization, manual entry or loading conditions.
+  Protocol-level nonpublication alone is not proof of output inhibition.
 - [ ] Design mailbox transaction invalidation/recovery following errors,
   resets and interrupts without trusting stale retained memory.
 - [ ] Define the control/status/cryptographic-output message classification,
   and deferred mailbox sizes, formats and checksum/EDC threat model.
+- [ ] Document the Level 1 backup-operational limitation: an adversarial
+  host choosing or learning the password-derived wrapping key can recover
+  encrypted exported SSPs. An organizational root-authority/trusted-recipient
+  recovery design is outside the initial scope.
 - [ ] Validate the representative STM32U5 PIL memory isolation, DMA/bus
   protections, reset paths and relevant errata after hardware arrives.
   This does not block continued architecture design.

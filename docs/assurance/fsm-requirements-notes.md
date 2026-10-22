@@ -69,9 +69,12 @@ policy, separate from the standard's specific zeroization obligations.
 ## Design handoff
 
 The MCL FSM must eventually account for the five mailbox interfaces,
-input acceptance, output publication, synchronizing objects, resets,
-invalid transactions, output inhibition, error and approved-service
-indications. No precise semaphore transitions or control-message
+input acceptance *after internal-copy validation*, outbound release
+authorization *before mailbox copying*, atomic message publication,
+synchronizing objects, resets, invalid transactions, normative output
+inhibition, error and approved-service indications. Early external reads
+are not valid published messages; an adversarial client may ignore
+semaphores, and this does not relax SSP protection or output inhibition. No precise semaphore transitions or control-message
 encodings are adopted yet; see
 [module-interfaces.md](../design/module-interfaces.md).
 

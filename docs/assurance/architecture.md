@@ -1,7 +1,7 @@
 # Embedded-Crypto Architecture
 
 **Status:** Draft for design review; MCL finite-state details remain open  
-**Last reviewed:** 2026-10-20  
+**Last reviewed:** 2026-10-22  
 **Repository:** `kytheros-com/embedded-crypto`  
 **Review baseline:** `main` at `6675ba7a434dbf9112c6bc0693249d05771a5f78`  
 **Working branch:** `design-requirements-audit/2026-10-19`
@@ -24,7 +24,7 @@ These are logical responsibilities, not necessarily separate crates, binaries, s
 - **Separation of concerns.** A primitive implements an algorithm, not an entire module security policy. The PIL implements platform mechanisms, not cryptographic-service policy. The MCL orchestrates and enforces security policy.
 - **Portable embedded core.** Production primitive paths shall be designed from the outset for `no_std` and without `alloc`, operating before an OS or fully configured MMU exists. A hosted test harness may use `std` without changing the embedded runtime contract.
 - **Explicit resource ownership.** Portable primitives use authorized internal caller-provided storage, never external mailbox references. Their standalone APIs remain independent of the reference MCL.
-- **MCL-enforced logical boundary.** Five separate fixed-memory mailboxes implement logical service information flow. The MCL exclusively mediates transfers and the PIL enforces memory isolation.
+- **MCL-enforced logical boundary.** Five separate fixed-memory mailboxes implement logical service information flow. The external caller is potentially adversarial: the MCL validates internal copies of all inbound information, authorizes outbound information before copying, and publishes complete messages through atomic synchronization; the PIL enforces memory isolation.
 - **Small, reviewable trusted mechanisms.** Prefer safe Rust for portable primitives. Any unavoidable `unsafe` code shall be narrowly contained, justified, reviewed, and tested in the component requiring it; the present workspace-level `unsafe_code = "forbid"` policy must not be weakened globally without an explicit design decision.
 - **No claims by association.** Correctness, memory safety, algorithm testing, module validation, side-channel behavior, and physical security are different properties, requiring separately identified evidence.
 - **Traceable change control.** Architecture changes are reviewed for effects on design, requirements, interfaces, security behavior, tests, and evidence before being accepted.
@@ -123,7 +123,7 @@ architecture requirements with the workbook before design freeze.
 
 The Module Control Layer has these principal responsibilities:
 
-- Exclusive mediation of the five logical mailbox service interfaces: coherent input snapshots, validation, authorization, copying to/from protected internal storage, and policy-gated output publication. The MCL is not alone the formal FIPS cryptographic boundary.
+- Exclusive mediation of the five logical mailbox service interfaces: bounded internal snapshots of untrusted input, validation of those copies, authorization before any outward copy, and atomic publication of completed outbound messages. An adversarial client may disregard semaphore ownership. The MCL is not alone the formal FIPS cryptographic boundary.
 - Ownership of the module finite-state machine and enforcement of allowable state transitions.
 - Enforcement of the selected security configuration, including output inhibition, SSP lifecycle policy, and required self-test sequencing.
 - Coordination with the PIL for bounded protected memory, hardware-source access, and fault/reset handoff; and with primitives for algorithm execution.
@@ -137,7 +137,7 @@ The following contracts describe **architectural requirements**, not completed A
 
 | Concern | Cryptographic primitives | Platform Integration Layer | Module Control Layer |
 | --- | --- | --- | --- |
-| Inputs and outputs | Specify authorized internal buffer contracts; never access external mailboxes | Enforce five mailbox payload and semaphore regions separately | Validate coherent mailbox snapshots, copy internally, authorize operations and gate outward publication |
+| Inputs and outputs | Specify authorized internal buffer contracts; never access external mailboxes | Enforce five mailbox payload and semaphore regions separately | Copy bounded untrusted input to internal memory, validate the copy; authorize result before copying outward and publish using atomic signaling |
 | Working storage | Declare bounded internal scratch/state needs | Reserve separate mailbox, MCL, SSP and primitive working regions | Allocate internal storage and prevent primitive/mailbox aliasing or conflicting reuse |
 | Randomness | Document algorithm-specific seed, pseudorandom-bit or entropy-input requirements; do not access the hardware source implicitly | Provide target-specific entropy-source access and status | Qualify/instantiate the RBG, authorize random inputs, enforce reseed policy and service availability |
 | SSP handling | Identify sensitive intermediates and cleanup contract; avoid uncontrolled copies | Protect, isolate and externally zeroize applicable memory regions | Own SSP inventory, usage authorization, lifetime, import/export and module zeroization policy |
@@ -164,15 +164,39 @@ defined operation permissions and required acquire/release ordering.
 Small control mailboxes will carry message-available, accepted, completed
 and related protocol events; actual encodings are not yet selected.
 
-Atomicity alone cannot stop an uncooperative external writer modifying
-input during a copy or an external reader observing output while it is
-still being written. A secure coherent MCL input snapshot and
-memory-enforced prevention of partial, stale or unauthorized output
-observation are **open design gates**, not presumed consequences of
-semaphore use. The PIL owns actual platform protection and reset/fault
-entry mechanisms; the MCL alone mediates logical mailbox information
-transfer. Primitives never access mailboxes, and external clients do
-not pass pointers into primitive memory.
+The external client, including the orchestrating host, is **potentially
+adversarial**. It may ignore the semaphore protocol and modify input while
+the MCL copies it, or read output before the MCL signals completion.
+Semaphores establish **message ownership and validity under the interface
+contract**; they do not authenticate clients or change the physical
+mailbox-access permissions.
+
+The MCL copies a bounded candidate input into protected internal storage
+and validates the **copied representation** before dispatch. The copied
+bytes need not represent a temporally consistent client-authored message;
+the MCL treats them as arbitrary untrusted input and must remain secure
+even when the client races the copy. Subsequent changes to the external
+mailbox do not affect an accepted operation. Malformed messages cause
+defined service rejection rather than a primitive internal-fault response.
+
+For output, the MCL checks completion, authorization, sensitivity and
+permissible module state **before copying** authorized results into
+externally readable payloads. In particular, plaintext CSPs and other
+prohibited information may never be exposed there, including before the
+publication signal. A result is **published and valid** only after the
+prescribed atomic semaphore transition. Earlier external reads have
+undefined *message semantics*: partially written or stale bytes are
+not valid results, and no promise of coherent early reads is made.
+This does **not** excuse unauthorized disclosure or waive normative
+data/control-output inhibition during specified states. In particular,
+the target design must still demonstrate that physically readable
+outbound mailboxes satisfy ISO/IEC 19790 AS03.07/AS03.10 and applicable
+CMVP rules; the exact evidence/mechanism remains open.
+
+The PIL owns actual platform protection and reset/fault entry
+mechanisms; the MCL alone mediates logical mailbox information
+transfer. Primitives never access mailboxes, and external clients
+do not pass pointers into primitive memory.
 
 Physical power, reset/exception signaling and hardware-originating
 events are separately handled by the PIL and classified against the
@@ -202,9 +226,11 @@ attack**, irrespective of whether an attack has been demonstrated.
    recovery and zeroization policy applies. The distinct rules for cold reset,
    warm reset, watchdog reset and processor faults remain open under Q-008.
 
-2. **Before invocation:** The MCL obtains and validates a coherent internal snapshot of inbound mailbox data, authorizes the requested service, checks
-   relevant FSM constraints and assigns the required working regions under PIL
-   memory and access-control mechanisms. The module maintains **trusted
+2. **Before invocation:** The MCL copies a bounded candidate from the
+   untrusted inbound mailbox into internal storage, validates that internal
+   representation, authorizes the requested service, checks the relevant FSM
+   constraints, and assigns working regions under PIL protection mechanisms.
+   Concurrent changes to external input cannot change an accepted operation. The module maintains **trusted
    records independent of the primitive** identifying every memory region
    that the primitive can modify under its actual execution configuration,
    including writable **internal** buffers, working storage and applicable stacks; primitives have no mailbox access.
@@ -221,8 +247,10 @@ attack**, irrespective of whether an attack has been demonstrated.
    cleanup of sensitive temporary state. The MCL then directs the PIL to
    zeroize released sensitive regions. Retained, authorized outputs and
    long-lived SSPs are governed by their explicit lifecycle contracts, rather
-   than accidentally erased as scratch. Documented negative service outcomes
-   follow this completion path.
+   than accidentally erased as scratch. The MCL checks output classification,
+   authorization and permissible state before copying any result into an
+   external mailbox, then performs atomic message publication. Documented
+   negative service outcomes follow the specified completion path.
 
 5. **On unexpected internal error or fault:** The module assumes a possible
    active attack. The MCL inhibits affected cryptographic services and
@@ -286,7 +314,7 @@ applicable Arm microcontrollers. The current engineering preference is small pri
 
 ### 5.4 Secret transfers and output policies
 
-The MCL may receive plaintext secrets through the data-input mailbox. However, it shall enforce the adopted policy against plaintext external export of CSPs and shall classify every external path. Public keys, signatures and ciphertexts may have different disclosure and integrity requirements. The specific ML-KEM shared-secret consumer/handle/export contract is **not yet frozen** (Q-005). The architecture does not silently authorize a raw shared-secret module service.
+The MCL may receive plaintext secrets through the untrusted data-input mailbox, subject to service and SSP-entry authorization and validation of an internal copy. However, it shall enforce the adopted policy against plaintext external export of CSPs and shall classify every external path. Public keys, signatures and ciphertexts may have different disclosure and integrity requirements. The specific ML-KEM shared-secret consumer/handle/export contract is **not yet frozen** (Q-005). Encrypted SSP backup does not protect confidentiality against a compromised host that chooses or knows the password from which the backup-wrapping key is derived; the design shall document that threat-model limitation. A separately credentialed organizational recovery authority and ML-KEM-based wrapping scheme are outside the present reference-module scope. The architecture does not silently authorize a raw shared-secret module service.
 
 ## 6. Random-bit generation, state, and services
 
@@ -312,7 +340,7 @@ Evidence is developed at the level where its claim can be established:
 | --- | --- | --- |
 | Algorithm conformance, API behavior and negative cases | Primitive | Identify the exact implementation/parameters, perform applicable independent testing and satisfy any additional module obligations |
 | Stack/scratch bounds, error handling, local cleanup | Primitive | Confirm behavior under the selected compiler, build flags and target environment |
-| Memory maps, five mailbox/semaphore regions, access controls, DMA/debug access, fault/reset vectors and hardware source conditions | PIL | Verify true access isolation, safe inbound snapshot, outbound visibility inhibition, retained-state handling and boundary inclusion |
+| Memory maps, five mailbox/semaphore regions, access controls, DMA/debug access, fault/reset vectors and hardware source conditions | PIL | Verify isolation, bounded input snapshot and validation, prohibition on sensitive early disclosure, required output inhibition, retained-state handling and boundary inclusion |
 | Approved services/modes, SSP lifecycle, full primitive-writable-region fault zeroization, module error state and output inhibition | MCL with PIL | Specify, implement, test and document the complete module obligations and fault/reset execution paths |
 | Algorithm validation protocols/certificates, CAST/PCT integration and CMVP submission | Module/integrator with laboratory as appropriate | Establish exact validated implementation, operational environment and required program evidence |
 
