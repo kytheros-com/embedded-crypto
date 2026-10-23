@@ -36,9 +36,10 @@ The workbook governs their current decision statuses. No implementation may turn
 - [ ] Specify bounded acquisition and internal-only validation of untrusted
   input, including adversarial concurrent writes, torn snapshots, malformed
   control records and refusal to re-read accepted external request fields.
-- [ ] Define the atomic output-publication event and require authorization,
-  successful completion, classification and state checks before *any* copy
-  to externally readable mailboxes. Do not require coherent early reads.
+- [x] Agree that success, authentication, context commit and
+  authorization of the **entire result** precede the first outward
+  byte-copy. Semaphore publication is cooperative synchronization only;
+  exact encoding and target inhibition evidence remain pending.
 - [ ] Verify that the resulting fixed-permission mailboxes do not disclose
   prohibited SSPs or violate CMVP data/control-output inhibition in error,
   pre-operational testing, zeroization, manual entry or loading conditions.
@@ -74,18 +75,38 @@ The workbook governs their current decision statuses. No implementation may turn
 - [ ] Determine whether `project-scope.md`, `architecture.md`, and the
   reference integration's eventual boundary remain fully consistent.
 
-## 5. MCL finite-state machine — after boundary interface design
+## 5. MCL finite-state machine — conceptual baseline agreed
 
-- [ ] Preserve the normative FSM requirements inventory recorded in
+- [x] Preserve normative FSM research in
   `docs/assurance/fsm-requirements-notes.md`.
-- [ ] Derive message-available, accepted, rejected, completed and published
-  events after the mailbox transfer protocol is defined.
-- [ ] Define states and guards for ordinary service outcomes, pre-operational
-  tests, approved services, zeroization and error handling.
-- [ ] Define reset and processor-fault events, PIL vector/handler handoff,
-  requirements for trusting retained FSM state, and conservative recovery.
-- [ ] Specify when the MCL orders zeroization of **every memory region the
-  faulting primitive could modify**, and how the PIL enforces or recovers it
-  under interrupted execution.
-- [ ] Cross-reference the resulting FSM requirements to D-007–D-009, Q-001,
-  Q-008 and applicable workbook evidence IDs before implementation.
+- [x] Record module, operation, context and key lifecycles, operation
+  acceptance, working-copy commit, exceptional outcomes, one-way
+  `RETIRING`, predefined bounded composition groups and the initial
+  single-executor/future-concurrency distinction in
+  `docs/design/mcl-fsm.md`.
+- [x] Record both IV strategies, irreversible spent allocations and
+  `DECRYPT_ONLY`, RAM-bounded whole-message GCM decryption,
+  complete-result authorization before outward byte copy, and
+  semaphore-only synchronization.
+- [x] Record scope-specific fault zeroization, distinction between
+  `ERROR` and module-wide purge, unconditional volatile context reset
+  cleanup and durable per-region interrupted-erasure markers.
+- [ ] Complete exhaustive state/event/guard/action/output table with
+  catch-all transitions and specific services, roles, authentication,
+  role clearing, conditional/on-demand self-tests and status indicators.
+- [ ] Select mailbox transfer formats, atomic ordering and actual
+  publication mechanics; test data/control-output inhibition, stale
+  mailbox bytes and interrupted outward copying.
+- [ ] Verify target PIL reset, processor fault, DMA/stack access,
+  primitive-writable inventory, source-level and compiled zeroization.
+- [ ] Select bounded decryption `L_max` after MCU RAM budgeting;
+  implement persistent key/IV accounting, anti-rollback and shared-key
+  aggregate RBG invocation limit policy.
+- [ ] Define marker encoding and durable update sequence for actual
+  storage technology; test resets/torn writes during erasure.
+- [ ] **Reconcile these decisions with the existing binary workbook**
+  requirements, design decisions, service contracts, SSP plan, open
+  questions and evidence; preserve identifiers. **Workbook not
+  modified in this documentation commit.**
+- [ ] Link final transition tests and design to existing D-007–D-009,
+  Q-001, Q-008 and applicable workbook evidence IDs.

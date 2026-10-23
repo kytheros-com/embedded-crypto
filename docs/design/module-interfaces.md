@@ -1,6 +1,6 @@
 # Reference Module Logical Interface Contract
 
-**Status:** Architectural baseline; transfer protocol under design  
+**Status:** Architectural baseline; output-copy policy agreed; transfer protocol and target evidence under design  
 **Date:** 2026-10-22  
 **Scope:** Embedded reference integration, not standalone primitive crates
 
@@ -90,13 +90,18 @@ semantically valid but adversarially chosen candidate is still untrusted;
 the MCL must remain secure when processing it. An invalid request is
 normally a specified service rejection, not an unexpected primitive fault.
 
-**Output publication:** The MCL verifies operation success, authorization,
-security classification and the current module state **before copying**
-a result into an externally readable output mailbox. It shall never place
+**Output publication:** The MCL verifies operation success under the service
+contract (including final authentication where required), completion of
+all relevant authoritative context commits, authorization of disclosure
+of the **entire result**, classification and the current module state
+**before copying even the first byte** into an externally readable
+output mailbox. It shall never place
 plaintext CSPs, unauthorized SSPs or other prohibited information into
-mailbox payloads, even temporarily. The MCL then copies the authorized
-result and **publishes** the message only by completing the specified
-atomic semaphore transition with the required memory ordering. Before
+mailbox payloads, even temporarily. The MCL then copies the authorized result and **publishes** the
+complete message only by completing the specified atomic semaphore
+transition with the required memory ordering. The host can physically
+read a partial authorized prefix during copying; the semaphore is
+cooperative synchronization, **not a confidentiality gate**. Before
 that transition, a client's read has **no valid message semantics**:
 partial or stale bytes are not an accepted module result. The module
 does not promise coherent early reads or prevent subsequent alteration
@@ -109,9 +114,11 @@ error conditions (ISO/IEC 19790 AS03.07 and AS03.10 and applicable CMVP
 guidance). An externally readable memory region may constitute a data
 output path even when a semaphore says "not published". The actual
 mailbox placement, write behavior, stale-content sanitization, gating
-and validation evidence must demonstrate those requirements. Any
-remaining feasibility/compliance issue is an **open design gate**, not
-silently resolved by redefining publication.
+and validation evidence must demonstrate those requirements. The **agreed mechanism** is to retain all intermediate results internally
+and not begin outward copying until the entire result is authorized.
+Stale previously published bytes, asynchronous interruption and physical
+inhibition evidence remain **implementation/evidence gates**; semaphore
+nonpublication does not establish normative output inhibition.
 
 ## 4. Required information-flow policy
 
@@ -168,7 +175,26 @@ physical/logical path, category separation, information formats, validators,
 output behavior and state-dependent inhibition. These are design evidence
 obligations; mailbox plans are not implementation proof.
 
-## 6. Deferred engineering details
+## 6. FSM service integration
+
+See [mcl-fsm.md](mcl-fsm.md) for the agreed module, operation,
+context and key FSMs. The distinct service events are message available,
+internally received, operation accepted (after validation and full
+resource acquisition), primitive completion, authoritative context
+commit, authorized outward copy and atomic publication.
+
+Primitives have no access to authoritative contexts, key/IV metadata
+or mailboxes. They process protected working copies; the MCL commits
+valid state before authorizing an entire result for disclosure. An
+expected negative GCM tag result destroys the affected operation
+contexts and provisional plaintext without destroying a valid key.
+
+Whole-message AES-GCM decryption is bounded by protected memory.
+Oversized input/update is rejected *before acceptance* without
+changing a valid context. The actual limit is deferred; the module
+does not define an authenticated-record streaming protocol.
+
+## 7. Deferred engineering details
 
 Unsettled: actual addresses and sizes; data/control/status record fields;
 number of outstanding requests; semaphore representation and privileges;

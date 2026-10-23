@@ -1,6 +1,6 @@
 # Embedded-Crypto Architecture
 
-**Status:** Draft for design review; MCL finite-state details remain open  
+**Status:** Draft architecture baseline; conceptual MCL FSM adopted; implementation and assurance evidence remain open  
 **Last reviewed:** 2026-10-22  
 **Repository:** `kytheros-com/embedded-crypto`  
 **Review baseline:** `main` at `6675ba7a434dbf9112c6bc0693249d05771a5f78`  
@@ -23,8 +23,9 @@ These are logical responsibilities, not necessarily separate crates, binaries, s
 
 - **Separation of concerns.** A primitive implements an algorithm, not an entire module security policy. The PIL implements platform mechanisms, not cryptographic-service policy. The MCL orchestrates and enforces security policy.
 - **Portable embedded core.** Production primitive paths shall be designed from the outset for `no_std` and without `alloc`, operating before an OS or fully configured MMU exists. A hosted test harness may use `std` without changing the embedded runtime contract.
-- **Explicit resource ownership.** Portable primitives use authorized internal caller-provided storage, never external mailbox references. Their standalone APIs remain independent of the reference MCL.
-- **MCL-enforced logical boundary.** Five separate fixed-memory mailboxes implement logical service information flow. The external caller is potentially adversarial: the MCL validates internal copies of all inbound information, authorizes outbound information before copying, and publishes complete messages through atomic synchronization; the PIL enforces memory isolation.
+- **Explicit resource ownership.** Portable primitives use authorized internal caller-provided storage, never external mailbox references or authoritative MCL contexts/key records. Only the MCL commits successful working-copy context updates.
+- **Fail-secure bounded state.** Fixed-member composition groups, one-way context retirement, spent IVs, irreversible decryption-only downgrades, and reset invalidation replace rollback and generalized recovery.
+- **MCL-enforced logical boundary.** Five separate fixed-memory mailboxes implement logical service information flow. The external caller is potentially adversarial: the MCL validates internal copies of all inbound information, authorizes outbound information before copying, and publishes complete messages through atomic synchronization; the PIL enforces memory isolation. **No outward result byte is written before the entire result is authorized**; the semaphore is cooperative synchronization, not an access-control barrier.
 - **Small, reviewable trusted mechanisms.** Prefer safe Rust for portable primitives. Any unavoidable `unsafe` code shall be narrowly contained, justified, reviewed, and tested in the component requiring it; the present workspace-level `unsafe_code = "forbid"` policy must not be weakened globally without an explicit design decision.
 - **No claims by association.** Correctness, memory safety, algorithm testing, module validation, side-channel behavior, and physical security are different properties, requiring separately identified evidence.
 - **Traceable change control.** Architecture changes are reviewed for effects on design, requirements, interfaces, security behavior, tests, and evidence before being accepted.
@@ -41,7 +42,7 @@ which we often refer to simply as **The Workbook**. Its relevant worksheets incl
 - **The Workbook** records controlling sources, normative applicability, project requirements, decision status, planned services, evidence ownership and completion state.
 - **`docs/assurance/project-scope.md`** defines assurance claims and the division between this project and a third-party integrating module. This architecture refines, but must not contradict, that scope.
 - **`docs/design/module-interfaces.md`** records the five-mailbox permissions and open synchronization/visibility questions.
-- **`docs/assurance/fsm-requirements-notes.md`** preserves normative FSM research for the later state-machine design.
+- **`docs/assurance/fsm-requirements-notes.md`** preserves normative FSM research; **`docs/design/mcl-fsm.md`** records the agreed conceptual FSM lifecycles, transitions, output policy and zeroization recovery.
 - **Algorithm-specific design and test documents** provide per-algorithm APIs, invariants, scratch memory requirements, test coverage, and evidence; they cite Workbook identifiers rather than duplicating full normative requirements.
 
 Any discrepancy between these documents is an error and should be reported and resolved.
@@ -124,7 +125,7 @@ architecture requirements with the workbook before design freeze.
 The Module Control Layer has these principal responsibilities:
 
 - Exclusive mediation of the five logical mailbox service interfaces: bounded internal snapshots of untrusted input, validation of those copies, authorization before any outward copy, and atomic publication of completed outbound messages. An adversarial client may disregard semaphore ownership. The MCL is not alone the formal FIPS cryptographic boundary.
-- Ownership of the module finite-state machine and enforcement of allowable state transitions.
+- Ownership of module, operation, context and key FSM lifecycles, bounded composition groups, MCL-only working-copy commits and allowable transitions (see [MCL FSM](../design/mcl-fsm.md)).
 - Enforcement of the selected security configuration, including output inhibition, SSP lifecycle policy, and required self-test sequencing.
 - Coordination with the PIL for bounded protected memory, hardware-source access, and fault/reset handoff; and with primitives for algorithm execution.
 - Assessment of retained FSM state following a reset or fault. Unverified or inconsistent retained state shall not be trusted to justify resumption of cryptographic services.
@@ -297,6 +298,47 @@ decides and coordinates SSP lifecycle, module error response and the complete
 primitive-writable-region wipe required by an unexpected fault. This preserves
 D-008–D-010 and the scope of SSP-007/008/012 while leaving platform recovery
 details open under Q-008.
+
+### 5.2.1 Agreed finite-state and recovery architecture
+
+The detailed design baseline is [the MCL FSM](../design/mcl-fsm.md).
+The module FSM gates startup, required self-tests, service/role authorization,
+zeroization and error handling. Operation acceptance occurs only after a
+bounded internal snapshot is validated and all required resources acquired.
+The operation FSM separates preparation, primitive execution, evaluation,
+MCL-only commit, output authorization/copy and semaphore publication.
+
+All authoritative contexts and keys are inaccessible to primitives,
+which execute exclusively on protected temporary working copies.
+Successful primitive completion authorizes the MCL to commit state
+under the defined service contract. A failed/canceled accepted
+stateful operation retires participating mutable contexts and
+dependent fixed-group members; an ordinary GCM tag failure **does not**
+invalidate a trustworthy AES key. `RETIRING` is a transient one-way
+context state until safe cleanup returns the slot to `FREE`.
+All volatile contexts are discarded after reset.
+
+Both deterministic and RBG-based AES-GCM IV strategies are supported
+as key-bound policies. MCL allocation irrevocably spends IVs/usage
+budget **before** encryption; no cancellation or reset recycles them.
+Loss of IV assurance permanently changes a still-trustworthy,
+decryption-authorized key to `DECRYPT_ONLY`; compromised key integrity
+requires invalidation instead. Large single-message authenticated
+decryption is **bounded** by protected RAM: no plaintext is exposed
+before final GCM tag verification, requests exceeding the configured
+limit are rejected before acceptance, and no module-defined
+streaming-record protocol is included. The limit is deferred.
+
+Unexpected primitive faults trigger zeroization of **every actual
+primitive-writable region** using independent trusted PIL records.
+Module error does not automatically require all-key zeroization;
+scope and mandatory triggers are specified separately. Retained SSP
+region erasure uses a durable in-progress marker cleared only after
+completed zeroization, so interrupted cleanup is retried after reset.
+Storage-specific encoding and rollback protection remain open (Q-008).
+
+These are architectural decisions, not target verification or completed
+CMVP evidence. The binary workbook requires later reconciliation.
 
 ### 5.3 Trust, privilege and safety boundaries
 

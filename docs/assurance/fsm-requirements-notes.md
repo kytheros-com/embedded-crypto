@@ -1,10 +1,11 @@
 # Module FSM — Normative Requirements Notes
 
-**Status:** Requirements research retained; no MCL FSM has been designed  
+**Status:** Normative research retained; conceptual MCL FSM architecture now documented separately  
 **Date:** 2026-10-20
 
-This note preserves the prior finite-state-model requirements survey while
-the logical service interface and PIL mechanism contracts are specified.
+This note retains the normative survey separately from the agreed
+[conceptual MCL FSM design](../design/mcl-fsm.md). Interface and PIL
+mechanism details still require implementation and testing.
 The workbook remains the authority for CMVP planning and applicability.
 
 ## Prescribed minimum states and representation
@@ -78,6 +79,10 @@ semaphores, and this does not relax SSP protection or output inhibition. No prec
 encodings are adopted yet; see
 [module-interfaces.md](../design/module-interfaces.md).
 
-The actual state machine and traceability tests are intentionally **not
-yet designed**. This note is a durable research checkpoint, not evidence
-of implementation or validation.
+A conceptual hierarchical design, state descriptions, major event guards,
+context and key lifecycles, fault scopes, output-copy authorization and
+interrupted-zeroization policy now appear in
+[mcl-fsm.md](../design/mcl-fsm.md). The **exhaustive** transition and
+observable-output table, role/service mappings, current CMVP guidance
+traceability, target evidence and implementation remain unfinished.
+This note is a normative-research checkpoint, not compliance evidence.
