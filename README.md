@@ -19,8 +19,19 @@ Do not use this software to protect sensitive or operational data.
 - Conformance testing against authoritative test vectors
 - Careful treatment of side-channel behavior
 - Support for embedded and resource-constrained targets
+- Optional reference integration with a five-mailbox MCL-controlled
+  logical interface and target-specific PIL protection mechanisms
 
 Initial development will focus on SHA-2 and SHA-3/SHAKE primitives.
+
+The planned reference integration uses separate fixed-memory mailboxes
+for five module logical interface categories. The MCL mediates external
+information flow; a platform-specific PIL enforces access permissions.
+Primitive crates remain independent, operating on authorized internal
+caller-provided buffers. These integration features are **designs, not
+implemented or verified capabilities**. See
+[architecture](docs/assurance/architecture.md) and
+[interface contract](docs/design/module-interfaces.md).
 
 ## Contributions
 
