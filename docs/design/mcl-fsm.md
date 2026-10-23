@@ -1,7 +1,7 @@
 # MCL Finite-State Architecture — Agreed Design Baseline
 
 **Status:** Conceptual design agreed; exhaustive transition/evidence mapping and implementation pending  
-**Date:** 2026-10-22  
+**Date:** 2026-10-23  
 **Branch:** `design-requirements-audit/2026-10-19`  
 **Scope:** Reference MCL/PIL integration, not an implemented or validated FIPS module
 
@@ -306,6 +306,83 @@ key with unknown IV history may be decryption-only. Fresh
 independently derived key material can enable encryption after
 proper validation and IV strategy initialization.
 
+
+### 5.1 MACsec and MACsec-XPN protocol-bound IV profiles
+
+**Design accommodation, not an approved-service claim:** Kytheros shall
+allow distinct MACsec GCM-AES and MACsec GCM-AES-XPN deterministic-IV
+profiles in future service design without adding a MACsec protocol
+engine or permitting unrestricted externally chosen encryption IVs.
+Ordinary deterministic and approved RBG-based GCM services remain
+separate. The selected IV construction is fixed by protected key/
+transmit-association metadata, not chosen freely on each request.
+
+| Profile | 96-bit AES-GCM IV | Transmit PN tracked by MCL |
+| --- | --- | --- |
+| MACsec GCM-AES-128/256 | `SCI[64] || PN[32]` | Full 32-bit PN |
+| MACsec GCM-AES-XPN-128/256 | `(SSCI[32] || XPN[64]) XOR Salt[96]` | Full 64-bit XPN (only low 32 bits in on-wire SecTAG) |
+
+SAK means Security Association Key; SCI is Secure Channel Identifier,
+SSCI is Short SCI, and the XPN salt is 96 bits. IEEE 802.1AE and its
+applicable amendments define actual frame processing and the
+corresponding association-parameter assignment.
+
+For each encryption-capable key and transmitting association, the
+MCL needs protected, integrity-checked and anti-rollback-bound
+metadata: SAK/key identity, permitted use, cipher suite/profile,
+authorized association/transmitter identity (SCI, and SSCI as
+applicable), XPN salt, **full-width highest allocated PN or
+equivalent next-unspent bound**, exhaustion policy and key/association
+lifecycle. Reassignment of SCI/SSCI/salt, profile or restored
+allocation metadata must not reintroduce a previously used full IV.
+Distinct transmitters sharing the same SAK require **global
+key/IV uniqueness across their associations**, not merely
+individual local counters. The initial profile should constrain
+ownership to one authorized transmitter per installed association.
+
+The external MACsec integrator may **propose** a PN under a specific
+authorized association service, or the MCL may allocate the next PN.
+In either case, before primitive encryption the MCL checks the full
+PN against protected association identity and bounds, requires it
+to be **strictly greater than every previously allocated PN for
+that key/association**, and durably marks the chosen PN and skipped
+values spent. A cancel, failure or reset never refunds PN values.
+Reject duplicate, lower, overflowing, exhausted or uncertain PNs.
+XPN comparisons use the **64-bit** value, not the truncated SecTAG
+field. The integrating peer must construct its transmitted SecTAG
+from the exact accepted association and PN. Monotonic-PN validation
+alone is insufficient if other senders can use the same SAK and
+IV namespace or restore stale association information.
+
+On **decryption**, a MACsec-supplied 96-bit IV may be accepted as
+untrusted input to the bounded whole-message authenticated-decryption
+service. Encryption-IV uniqueness restrictions do not require
+strictly increasing receive-side PNs. MACsec frame parsing, XPN
+high-bit reconstruction, receive replay windows and key exchange
+belong to the external protocol implementation unless separately
+designed as services; successful GCM authentication alone does not
+provide replay prevention.
+
+**CMVP approval conditions are not optional.** FIPS 140-3 IG §C.H
+Scenario 1(c) (2026-08-19) explicitly recognizes MACsec
+GCM-AES-128/256 and XPN-128/256 but treats IV generation and management
+as **distributed** among Peer, Authenticator and optional
+Authentication Server modules. The final Security Policy and
+validation evidence must identify every module's MACsec role,
+the collaboration with other validated components, and the IV
+generation and restore procedure. **Scenario 3a** requires an
+acceptable post-power-loss IV restoration policy (such as securely
+resuming the counter or establishing a new key), not an assumption
+that a host-supplied PN is trustworthy. IG §C.H Additional
+Comment 8 **prohibits statically configured pre-shared SAKs
+in approved mode**. The module cannot claim MACsec approval just
+because its local PN increases. These requirements are pending
+boundary/service design, workbook reconciliation and CSTL review.
+
+Sources: [CMVP FIPS 140-3 IG, §C.H](https://csrc.nist.gov/csrc/media/Projects/cryptographic-module-validation-program/documents/fips%20140-3/FIPS%20140-3%20IG.pdf)
+(latest update verified 2026-10-23: 2026-08-19) and
+[IEEE 802.1AE standards](https://1.ieee802.org/security/802-1ae/).
+
 ## 6. Disclosure and physical output inhibition
 
 The MCL verifies success, completion of **all required context
@@ -325,7 +402,9 @@ outward mailboxes.
 
 The PIL/interface design must establish actual data/control-output
 inhibition in error, zeroization, pre-operational tests, manual SSP
-entry and loading as applicable under ISO/CMVP requirements. Stale
+entry and loading as applicable under ISO/CMVP requirements.
+**The output-inhibition guard covers routine SSP zeroization in
+`RELEASING` or `RETIRING`, not only global `ZEROIZING`.** Stale
 previously published mailbox bytes, asynchronous interruption of a
 copy, status/error exceptions and physical gating remain specific
 interface/target assurance tests; semaphore nonpublication alone
@@ -389,6 +468,45 @@ remain separate from internal transaction markers.
 | Cleanup interrupted/uncertain | Block use/reuse until recovered | Pending marker or safe reset recovery |
 | Trusted hardware isolation lost | Fail secure | Emergency purge only by reliable mechanism |
 
+
+### 7.1 Routine cleanup versus module-level ZEROIZING
+
+**Not every wipe of a memory region is a global zeroization event.**
+Erasing released primitive scratch in `RELEASING`, provisional
+plaintext after failed authentication, or a context and its working
+storage in `RETIRING` is an **ordinary subordinate operation/
+context cleanup procedure**. It does not itself cause FSM-MOD to
+enter `ZEROIZING`, require destroying unrelated SSPs, or create a
+separate operator zeroization service. `RETIRING` still blocks
+acquisition until all required erasure is established.
+
+**Output inhibition is separate from the module state enum.**
+When routine cleanup is actually zeroizing SSPs, the MCL/PIL must
+assert a protected data-output inhibition guard **before erasure**
+and release it only after completion, independently of whether
+FSM-MOD remains `OPERATIONAL`. We adopt the same conservative
+no-outward-copy ordering for other sensitive temporary plaintext.
+The initial serialized implementation can complete cleanup before
+any new outward copy; future concurrency needs a reliable
+module-wide output interlock for applicable SSP erasure. This
+respects the applicable ISO/IEC 19790 §7.3.3 AS03.07
+zeroization-output inhibition instead of treating only a
+`ZEROIZING` enum value as security-significant.
+
+FSM-MOD `ZEROIZING` represents the **authorized zeroization
+service or an applicable module-wide destruction action** and
+continues to inhibit prohibited output. Completion indication
+follows the relevant level/service requirements; IG §9.7.B
+addresses Levels 2–4 and explicitly recognizes implicit completion
+of temporary-SSP cleanup via its responsible function/service.
+This does not mandate entering global `ZEROIZING` for routine
+cleanup and does not create an extra Level 1 per-buffer indicator
+requirement. Incorrect or interrupted cleanup still follows
+the existing fail-secure fault/reset path.
+
+Reference: [CMVP IG §9.7.B](https://csrc.nist.gov/csrc/media/Projects/cryptographic-module-validation-program/documents/fips%20140-3/FIPS%20140-3%20IG.pdf)
+(2026-08-19).
+
 ## 8. Local invariants and remaining evidence work
 
 These **local** labels are not permanent workbook IDs:
@@ -406,6 +524,8 @@ These **local** labels are not permanent workbook IDs:
 | CTX-C | Fixed bounded groups only; provisional material cannot be disclosed |
 | KEY-A | Both IV strategies; irrevocable allocation and per-key limits |
 | KEY-B | `DECRYPT_ONLY` one-way for same material |
+| KEY-C | MACsec/XPN key-association binding, full-PN monotonicity, and distributed IG §C.H compliance are mandatory for any future approved profile |
+| ZER-B | Routine SSP cleanup stays within subordinate FSMs but inhibits data output for the duration of erasure |
 | FLT-A | Fault wipe covers all primitive-writable regions under actual PIL permissions |
 | ZER-A | Durable pending marker before erasure, clear last, reset re-erases |
 
@@ -416,13 +536,18 @@ multi-context commit interruption; group invalidation; reboot
 during primitive execution, outward copy, cleanup, IV reservation
 and persistent erase; corrupted/torn markers and attempted
 rollback; prohibited output even with adversarial early reads;
-self-test failure and zeroization completion status.
+self-test failure and zeroization completion status; routine SSP
+cleanup output-gate tests while operational; MACsec/XPN full-PN
+monotonicity, PN replay/overflow and high-bit wrap, association
+binding and backup rollback, and permitted post-power-loss recovery.
 
 **Still open:** exhaustive service/role/guard/action/output transition
 table, exact on-demand/conditional tests, approved-service indicator,
 mailbox records and semaphores, stale output and copy interruption,
 actual protected memory limits, persistent key/marker durability
-and anti-rollback, multi-device IV accounting, platform fault
+and anti-rollback, multi-device IV accounting and MACsec/XPN
+association provisioning, distributed §C.H/Scenario 3a
+conformity, platform fault
 containment/zeroization evidence, formal boundary (Q-001) and reset
 details (Q-008). Reconcile this design to existing workbook IDs
 and evidence without repurposing them. This is a design baseline,

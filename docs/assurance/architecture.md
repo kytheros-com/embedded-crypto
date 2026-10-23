@@ -1,7 +1,7 @@
 # Embedded-Crypto Architecture
 
 **Status:** Draft architecture baseline; conceptual MCL FSM adopted; implementation and assurance evidence remain open  
-**Last reviewed:** 2026-10-22  
+**Last reviewed:** 2026-10-23  
 **Repository:** `kytheros-com/embedded-crypto`  
 **Review baseline:** `main` at `6675ba7a434dbf9112c6bc0693249d05771a5f78`  
 **Working branch:** `design-requirements-audit/2026-10-19`
@@ -336,6 +336,26 @@ scope and mandatory triggers are specified separately. Retained SSP
 region erasure uses a durable in-progress marker cleared only after
 completed zeroization, so interrupted cleanup is retried after reset.
 Storage-specific encoding and rollback protection remain open (Q-008).
+
+Routine scratch clearing and per-context `RETIRING` cleanup do **not**
+force the global FSM into `ZEROIZING`. Instead, a protected
+data-output inhibition guard covers actual SSP erasure even while
+the module stays operational; the authorized zeroization service
+and applicable whole-module purge remain separately modeled.
+
+Protocol-bound MACsec GCM-AES and MACsec GCM-AES-XPN encryption
+profiles must be accommodated as **distinct deterministic IV
+constructions**, bound to protected key/transmit-association
+identity, SCI or SSCI/salt, full-width 32- or 64-bit PN and
+irreversible per-association allocation/rollback state. A caller's
+PN proposal is never unrestricted authority to select encryption
+IVs. MACsec decryption may consume externally derived IVs.
+A future approved MACsec service must demonstrate FIPS 140-3
+IG §C.H Scenario 1(c)'s distributed validated-module responsibilities,
+Scenario 3a power-restoration rules, and Additional Comment 8's
+prohibition on static pre-shared SAKs; it does **not** require us
+to implement the MACsec stack. See
+[the MCL FSM MACsec profile](../design/mcl-fsm.md#51-macsec-and-macsec-xpn-protocol-bound-iv-profiles).
 
 These are architectural decisions, not target verification or completed
 CMVP evidence. The binary workbook requires later reconciliation.

@@ -57,6 +57,37 @@ modify or clarify the applicable requirements and must be checked at the
 design/validation gates. DRBG and entropy mechanisms introduce additional
 SP 800-90A/B/C lifecycle, health-test, and failure constraints.
 
+## Specific CMVP guidance examined 2026-10-23
+
+- **Routine zeroization and the module FSM.** Internal cleanup of
+  temporary sensitive storage while `RELEASING` or `RETIRING`
+  need not enter the *global* `ZEROIZING` state, although
+  ISO/IEC 19790 AS03.07's **data-output inhibition while
+  zeroizing SSPs** still applies. Output inhibition is an
+  independent MCL/PIL guard. IG §9.7.B (2026-08-19,
+  applicable to Levels 2–4) permits implicit completion
+  indicators via the function/service that zeroized
+  temporary SSPs. The Level 1 project should not
+  mistake that indicator provision for a rule imposing a
+  global state transition on every wipe. The operator
+  zeroization service remains a distinct state/behavior.
+- **MACsec and XPN.** Current IG §C.H Scenario 1(c)
+  explicitly recognizes IEEE 802.1AE GCM-AES and
+  GCM-AES-XPN cipher suites, with distributed roles
+  across separately validated MACsec components.
+  Scenario 3a governs recovery of deterministic IV state
+  after power loss. Additional Comment 8 prohibits
+  statically configured pre-shared SAKs in approved mode.
+  Correct key+association SCI/SSCI/salt binding and full
+  PN monotonicity are important local controls, not a
+  substitute for the distributed protocol conditions.
+  Receiving/decrypting externally derived IVs is distinct
+  from encrypting with an externally proposed PN.
+- The applicable source is the [2026-08-19 FIPS 140-3
+  IG](https://csrc.nist.gov/csrc/media/Projects/cryptographic-module-validation-program/documents/fips%20140-3/FIPS%20140-3%20IG.pdf)
+  §§9.7.B and C.H. Map these findings into the workbook
+  before making an implementation or compliance claim.
+
 ## Project policy, not an ISO-imposed full-region wipe
 
 Unexpected primitive internal errors are treated as potential active

@@ -99,6 +99,21 @@ The workbook governs their current decision statuses. No implementation may turn
   mailbox bytes and interrupted outward copying.
 - [ ] Verify target PIL reset, processor fault, DMA/stack access,
   primitive-writable inventory, source-level and compiled zeroization.
+- [x] Clarify routine `RELEASING`/`RETIRING` cleanup versus
+  global `ZEROIZING`, retaining output inhibition during
+  applicable SSP erasure even in the operational state.
+- [x] Document protocol-bound MACsec and MACsec-XPN IV
+  profiles with protected key/association binding and
+  full-width, irrevocable packet-number allocation.
+- [ ] Define/test operational SSP-wipe output gate, including
+  interruption and future simultaneous operations.
+- [ ] Design MACsec/XPN association establishment, SCI/SSCI/salt
+  integrity and anti-rollback, full-width PN monotonicity and
+  exhaustion, and multi-peer shared-SAK IV uniqueness.
+- [ ] Reconcile future MACsec claims to CMVP IG §C.H
+  Scenario 1(c), Scenario 3a power recovery, validated
+  component roles, and the approved-mode static-SAK
+  prohibition; get CSTL input before claiming compliance.
 - [ ] Select bounded decryption `L_max` after MCU RAM budgeting;
   implement persistent key/IV accounting, anti-rollback and shared-key
   aggregate RBG invocation limit policy.

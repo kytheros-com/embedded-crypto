@@ -1,7 +1,7 @@
 # Reference Module Logical Interface Contract
 
 **Status:** Architectural baseline; output-copy policy agreed; transfer protocol and target evidence under design  
-**Date:** 2026-10-22  
+**Date:** 2026-10-23  
 **Scope:** Embedded reference integration, not standalone primitive crates
 
 ## 1. Architectural boundary
@@ -193,6 +193,36 @@ Whole-message AES-GCM decryption is bounded by protected memory.
 Oversized input/update is rejected *before acceptance* without
 changing a valid context. The actual limit is deferred; the module
 does not define an authenticated-record streaming protocol.
+
+### 6.1 Routine SSP cleanup and physical output inhibition
+
+Ordinary wiping of working storage and `RETIRING` context cleanup
+are subordinate operation/context actions, **not** a request to
+enter module-level `ZEROIZING`. A protected data-output gate
+still inhibits output during applicable SSP erasure regardless
+of the global state enumeration. The initial executor serializes
+cleanup before further outward result copying; future
+concurrency must preserve the same physical inhibition.
+The external host's semaphore behavior is irrelevant to
+the security decision.
+
+### 6.2 MACsec and MACsec-XPN service accommodation
+
+A future protocol-bound encryption service may accept a proposed
+MACsec packet number only after binding it to protected key/SAK
+and transmit-association metadata, validating monotonicity of
+the **full** 32-bit PN or 64-bit XPN, and irrevocably spending
+it before AES-GCM encryption. SCI, SSCI, XPN salt and suite are
+protected association properties, not freely mutable per-request
+fields. MACsec receiving/decryption may accept an externally
+derived IV; replay-window and frame logic remain external.
+
+Any approved-mode integration must satisfy the CMVP IG §C.H
+Scenario 1(c) distributed MACsec component responsibilities,
+Scenario 3a IV restoration and Additional Comment 8's
+prohibition on statically pre-shared SAKs. See
+[the FSM profile](mcl-fsm.md#51-macsec-and-macsec-xpn-protocol-bound-iv-profiles).
+No MACsec-specific mailbox protocol or framing is selected yet.
 
 ## 7. Deferred engineering details
 
