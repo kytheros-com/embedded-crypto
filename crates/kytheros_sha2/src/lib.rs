@@ -4,3 +4,5 @@
 //!
 //! This crate is under active development and is not ready for
 //! production use.
+
+pub mod sha256;
