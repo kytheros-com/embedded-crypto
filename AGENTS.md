@@ -40,7 +40,7 @@ Report conflicts between specifications, design documents, and implementation. D
 
 ## 4. Documentation
 
-Follow `docs/development/documentation-standard.md`.
+Follow `docs/documentation-standard.md`.
 
 Use `//!` for crate and module documentation, `///` for Rust API documentation, and `//` for implementation commentary.
 

@@ -61,7 +61,7 @@ The repository uses the following documentation hierarchy.
 |---|---|---|
 | Requirements and assurance | Normative applicability, requirements, evidence plans, decisions and open questions | `docs/assurance/` |
 | Architecture and detailed design | Component responsibilities, interfaces, state machines and design rationale | `docs/assurance/` and `docs/design/` |
-| Development standards | Engineering conventions, methods and review requirements | `docs/development/` |
+| Development standards | Engineering conventions, methods and review requirements | `docs/` |
 | Crate and module documentation | Purpose, scope, integration contracts and limitations | Rust `//!` comments |
 | API documentation | Behavioral contracts, equations, inputs and outputs | Rust `///` comments |
 | Implementation commentary | Local invariants and nonobvious implementation details | Rust `//` comments |

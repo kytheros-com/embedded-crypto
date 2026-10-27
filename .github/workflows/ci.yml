@@ -66,6 +66,14 @@ jobs:
       - name: Run tests
         run: cargo test --workspace --all-targets --locked
 
+      - name: Check Rust documentation
+        env:
+          RUSTDOCFLAGS: "-D rustdoc::broken_intra_doc_links"
+        run: cargo doc --workspace --no-deps --locked
+
+      - name: Run documentation tests
+        run: cargo test --doc --workspace --locked
+
   no_std:
     name: Bare-metal check
     runs-on: ubuntu-24.04
