@@ -1,49 +1,184 @@
-//! SHA-256 word functions from NIST FIPS 180-4 (August 2015), §4.1.2.
+//! SHA-256 logical word functions from NIST FIPS 180-4, §4.1.2.
 //!
-//! Words are 32-bit unsigned integers. Following §3.1, the most significant
-//! bit is the leftmost bit of the represented bit string; future byte decoding
-//! must preserve NIST's big-endian convention. These functions operate on word
-//! values independently of host byte order and perform no message parsing.
+//! # Scope and algorithm decomposition
 //!
-//! Inputs and outputs are temporary working values. No state is retained here;
-//! the MCL owns authoritative cryptographic state and any eventual commits.
-//! This module implements only logical functions, not a complete hash.
+//! This draft implements only the six functions shared by SHA-224 and
+//! SHA-256. In SHA-256 hash computation (§6.2.2), [`ch`], [`maj`],
+//! [`big_sigma_0`] and [`big_sigma_1`] combine working variables in each
+//! round; [`small_sigma_0`] and [`small_sigma_1`] expand the message
+//! schedule. Padding, parsing, initial values, round constants, schedule
+//! expansion, compression and digest output are not implemented here.
+//! These functions alone cannot hash a message.
 //!
-//! Specification: <https://doi.org/10.6028/NIST.FIPS.180-4>.
+//! # Word representation and function contract
+//!
+//! Each input and result is a 32-bit word represented by `u32`. As in
+//! FIPS 180-4 §3.1, the most significant bit is the leftmost bit of the
+//! represented bit string. Operations on word values are independent of
+//! host byte order; this module performs no byte decoding or encoding.
+//! Future message parsing must follow the standard's big-endian convention.
+//!
+//! In the definitions below, AND, XOR and NOT operate bitwise, ROTR rotates
+//! a 32-bit word right, and SHR shifts right with zero fill (§3.2).
+//! All functions accept every `u32` value, return a word deterministically,
+//! and have no error or panic conditions. They allocate no storage on the
+//! heap, perform no I/O and retain no persistent internal state.
+//!
+//! # Kytheros integration design
+//!
+//! The planned Module Control Layer (MCL) owns authoritative cryptographic
+//! state and commits working-copy updates. These functions accept and return
+//! temporary word values; they neither access nor commit MCL state. MCL
+//! ownership is a Kytheros architecture decision, not a FIPS 180-4 rule.
+//! The MCL and platform protection mechanisms are not implemented here.
+//! Lack of retained state does not establish erasure of register or stack
+//! copies, nor does it establish side-channel or fault resistance.
+//!
+//! # Evidence limits and references
+//!
+//! This is an incomplete development implementation, not production-ready
+//! software. Unit tests exercise Boolean identities and sampled inverse-map
+//! consistency; they are not complete SHA-256 validation or module self-tests.
+//! No independent audit, formal verification, CAVP algorithm validation or
+//! FIPS 140-3/CMVP module validation is claimed.
+//!
+//! The normative algorithm reference is [FIPS 180-4 (August 2015)][fips].
+//! Function definitions follow §4.1.2, equations (4.2)–(4.7). Examples below
+//! are independently calculated illustrations, not NIST-published vectors.
+//!
+//! [fips]: https://doi.org/10.6028/NIST.FIPS.180-4
 
 // 4.1.2 SHA-224 and SHA-256 Functions (32-bit words).
 
-/// `Ch(x, y, z) = (x AND y) XOR (NOT x AND z)` (§4.1.2, Eq. 4.2).
+/// Selects each result bit from `y` or `z` according to `x`.
+///
+/// `Ch(x, y, z) = (x AND y) XOR (NOT x AND z)`.
+/// Defined in FIPS 180-4 §4.1.2, equation (4.2).
+///
+/// The three inputs are working words. At each bit position, a set bit in
+/// `x` selects the corresponding bit of `y`; a clear bit selects `z`.
+/// Thus `Ch(x, y, y) = y`. Selection is independent at each bit position.
+///
+/// # Examples
+///
+/// ```rust
+/// use kytheros_sha2::sha256::ch;
+///
+/// assert_eq!(ch(0xffff_0000, 0x1234_5678, 0x9abc_def0), 0x1234_def0);
+/// ```
 #[inline]
 pub const fn ch(x: u32, y: u32, z: u32) -> u32 {
     (x & y) ^ (!x & z)
 }
 
-/// `Maj(x, y, z) = (x AND y) XOR (x AND z) XOR (y AND z)` (Eq. 4.3).
+/// Returns the bitwise majority of three working words.
+///
+/// `Maj(x, y, z) = (x AND y) XOR (x AND z) XOR (y AND z)`.
+/// Defined in FIPS 180-4 §4.1.2, equation (4.3).
+///
+/// Each result bit is set exactly when at least two corresponding input
+/// bits are set. The result is invariant under permutations of the three
+/// inputs, and `Maj(x, x, z) = x`.
+///
+/// # Examples
+///
+/// ```rust
+/// use kytheros_sha2::sha256::maj;
+///
+/// assert_eq!(maj(0xffff_0000, 0xff00_ff00, 0xf0f0_f0f0), 0xfff0_f000);
+/// ```
 #[inline]
 pub const fn maj(x: u32, y: u32, z: u32) -> u32 {
     (x & y) ^ (x & z) ^ (y & z)
 }
 
-/// `Σ₀(x) = ROTR²(x) XOR ROTR¹³(x) XOR ROTR²²(x)` (Eq. 4.4).
+/// Computes the SHA-256 Σ₀ transformation of a word.
+///
+/// `Σ₀(x) = ROTR²(x) XOR ROTR¹³(x) XOR ROTR²²(x)`.
+/// Defined in FIPS 180-4 §4.1.2, equation (4.4).
+///
+/// Input `x` is a 32-bit word, used as round working variable `a`
+/// in §6.2.2; the result is the transformed 32-bit word.
+/// This map is linear over GF(2): `f(x XOR y) = f(x) XOR f(y)` and
+/// `f(0) = 0`. This is bit-vector linearity, not integer additivity.
+///
+/// # Examples
+///
+/// ```rust
+/// use kytheros_sha2::sha256::big_sigma_0;
+///
+/// assert_eq!(big_sigma_0(1), 0x4008_0400);
+/// assert_eq!(big_sigma_0(0), 0);
+/// ```
 #[inline]
 pub const fn big_sigma_0(x: u32) -> u32 {
     x.rotate_right(2) ^ x.rotate_right(13) ^ x.rotate_right(22)
 }
 
-/// `Σ₁(x) = ROTR⁶(x) XOR ROTR¹¹(x) XOR ROTR²⁵(x)` (Eq. 4.5).
+/// Computes the SHA-256 Σ₁ transformation of a word.
+///
+/// `Σ₁(x) = ROTR⁶(x) XOR ROTR¹¹(x) XOR ROTR²⁵(x)`.
+/// Defined in FIPS 180-4 §4.1.2, equation (4.5).
+///
+/// Input `x` is a 32-bit word, used as round working variable `e`
+/// in §6.2.2; the result is the transformed 32-bit word.
+/// This map is linear over GF(2): `f(x XOR y) = f(x) XOR f(y)` and
+/// `f(0) = 0`. This is bit-vector linearity, not integer additivity.
+///
+/// # Examples
+///
+/// ```rust
+/// use kytheros_sha2::sha256::big_sigma_1;
+///
+/// assert_eq!(big_sigma_1(1), 0x0420_0080);
+/// assert_eq!(big_sigma_1(0), 0);
+/// ```
 #[inline]
 pub const fn big_sigma_1(x: u32) -> u32 {
     x.rotate_right(6) ^ x.rotate_right(11) ^ x.rotate_right(25)
 }
 
-/// `σ₀(x) = ROTR⁷(x) XOR ROTR¹⁸(x) XOR SHR³(x)` (Eq. 4.6).
+/// Computes the SHA-256 σ₀ transformation of a word.
+///
+/// `σ₀(x) = ROTR⁷(x) XOR ROTR¹⁸(x) XOR SHR³(x)`.
+/// Defined in FIPS 180-4 §4.1.2, equation (4.6).
+///
+/// Input `x` is a 32-bit word, used as message-schedule word `W[t - 15]`
+/// in §6.2.2; the result is the transformed 32-bit word.
+/// This map is linear over GF(2): `f(x XOR y) = f(x) XOR f(y)` and
+/// `f(0) = 0`. This is bit-vector linearity, not integer additivity.
+///
+/// # Examples
+///
+/// ```rust
+/// use kytheros_sha2::sha256::small_sigma_0;
+///
+/// assert_eq!(small_sigma_0(1), 0x0200_4000);
+/// assert_eq!(small_sigma_0(0), 0);
+/// ```
 #[inline]
 pub const fn small_sigma_0(x: u32) -> u32 {
     x.rotate_right(7) ^ x.rotate_right(18) ^ (x >> 3)
 }
 
-/// `σ₁(x) = ROTR¹⁷(x) XOR ROTR¹⁹(x) XOR SHR¹⁰(x)` (Eq. 4.7).
+/// Computes the SHA-256 σ₁ transformation of a word.
+///
+/// `σ₁(x) = ROTR¹⁷(x) XOR ROTR¹⁹(x) XOR SHR¹⁰(x)`.
+/// Defined in FIPS 180-4 §4.1.2, equation (4.7).
+///
+/// Input `x` is a 32-bit word, used as message-schedule word `W[t - 2]`
+/// in §6.2.2; the result is the transformed 32-bit word.
+/// This map is linear over GF(2): `f(x XOR y) = f(x) XOR f(y)` and
+/// `f(0) = 0`. This is bit-vector linearity, not integer additivity.
+///
+/// # Examples
+///
+/// ```rust
+/// use kytheros_sha2::sha256::small_sigma_1;
+///
+/// assert_eq!(small_sigma_1(1), 0x0000_a000);
+/// assert_eq!(small_sigma_1(0), 0);
+/// ```
 #[inline]
 pub const fn small_sigma_1(x: u32) -> u32 {
     x.rotate_right(17) ^ x.rotate_right(19) ^ (x >> 10)
@@ -54,6 +189,9 @@ mod tests {
     use super::*;
 
     const WORD_SIZE_IN_BITS: u32 = 32;
+    // Local Boolean fixtures: bits 12..15 encode all eight input triples
+    // together with bits 16..19. Expected words follow the truth tables;
+    // no NIST-published vector source is recorded for these values.
     const TEST_X: u32 = 0x0000f000;
     const TEST_Y: u32 = 0x00033000;
     const TEST_Z: u32 = 0x00055000;
@@ -63,6 +201,10 @@ mod tests {
 
     const SIGMA_BULK_TEST_NUM_ITERATIONS: u32 = 50_000;
 
+    // Candidate inverse linear maps over GF(2), one per sigma function.
+    // Entry i encodes column i: the inverse image of basis word 1 << i.
+    // They are test oracles, not FIPS constants or NIST-published vectors.
+    // Their generation method and independent review remain undocumented.
     const BIG_SIGMA_0_INVERSE: [u32; 32] = [
         0xCBD1A68D, 0x97A34D1B, 0x2F469A37, 0x5E8D346E, 0xBD1A68DC, 0x7A34D1B9,
         0xF469A372, 0xE8D346E5, 0xD1A68DCB, 0xA34D1B97, 0x469A372F, 0x8D346E5E,
@@ -99,6 +241,12 @@ mod tests {
         0x6377556B, 0xC6EEAAD6,
     ];
 
+    // Right-shifting Galois LFSR: XOR this mask after shifting exactly
+    // when the old least significant bit is one. Set mask bits are
+    // positions 31, 21, 1 and 0 (LSB = position 0). This convention avoids
+    // ambiguity with reciprocal-polynomial or left-shifting descriptions.
+    // Zero is absorbing; tests start at 0x8000_0000. No maximal-period
+    // or statistical-randomness claim is needed for these sampled tests.
     const LFSR_MASK: u32 = 0x8020_0003;
 
     #[inline]
@@ -106,6 +254,10 @@ mod tests {
         (x >> 1) ^ (0_u32.wrapping_sub(x & 1) & LFSR_MASK)
     }
 
+    // Reverse bit order by swapping halves, then groups of 8, 4, 2, 1.
+    // Each stage uses complementary masks to select the exchanged groups.
+    // Applied to every operand and answer, any common bit permutation
+    // preserves Ch/Maj because they act independently at each position.
     #[inline]
     fn butterfly_permutation(x: u32) -> u32 {
         let mut shift = 16;
@@ -119,6 +271,10 @@ mod tests {
         y
     }
 
+    // Rotate truth-table fixtures through all bit positions, then mix
+    // reversal with rotation to exercise a second positional arrangement.
+    // Checks bitwise Boolean behavior; not exhaustive over word triples
+    // and not a test of complete SHA-256 compression or hashing.
     #[test]
     fn ch_walking_bits_test() {
         let mut x = TEST_X;
@@ -145,6 +301,10 @@ mod tests {
         }
     }
 
+    // Rotate truth-table fixtures through all bit positions, then mix
+    // reversal with rotation to exercise a second positional arrangement.
+    // Checks bitwise Boolean behavior; not exhaustive over word triples
+    // and not a test of complete SHA-256 compression or hashing.
     #[test]
     fn maj_walking_bits_test() {
         let mut x = TEST_X;
@@ -171,6 +331,9 @@ mod tests {
         }
     }
 
+    // Multiply a column-encoded 32 x 32 binary matrix by word vector x.
+    // Bit i of x selects column a[i]; XOR is addition over GF(2).
+    // The signed right shift expands the selected bit into a full mask.
     fn apply_matrix(x: u32, a: [u32; 32]) -> u32 {
         let mut results: u32 = 0;
         for i in 0..32 {
@@ -179,6 +342,10 @@ mod tests {
         results
     }
 
+    // Sample inverse(f(x)) = x for 50,000 deterministic LFSR states.
+    // OR accumulates every mismatch bit so failures cannot cancel.
+    // Consistency depends on the inverse oracle: these samples do not
+    // independently prove the FIPS formula, exhaustive coverage or period.
     #[test]
     fn big_sigma_0_test() {
         let mut x: u32 = 0x8000_0000;
@@ -190,6 +357,10 @@ mod tests {
         assert_eq!(result, 0);
     }
 
+    // Sample inverse(f(x)) = x for 50,000 deterministic LFSR states.
+    // OR accumulates every mismatch bit so failures cannot cancel.
+    // Consistency depends on the inverse oracle: these samples do not
+    // independently prove the FIPS formula, exhaustive coverage or period.
     #[test]
     fn big_sigma_1_test() {
         let mut x: u32 = 0x8000_0000;
@@ -201,6 +372,10 @@ mod tests {
         assert_eq!(result, 0);
     }
 
+    // Sample inverse(f(x)) = x for 50,000 deterministic LFSR states.
+    // OR accumulates every mismatch bit so failures cannot cancel.
+    // Consistency depends on the inverse oracle: these samples do not
+    // independently prove the FIPS formula, exhaustive coverage or period.
     #[test]
     fn small_sigma_0_test() {
         let mut x: u32 = 0x8000_0000;
@@ -212,6 +387,10 @@ mod tests {
         assert_eq!(result, 0);
     }
 
+    // Sample inverse(f(x)) = x for 50,000 deterministic LFSR states.
+    // OR accumulates every mismatch bit so failures cannot cancel.
+    // Consistency depends on the inverse oracle: these samples do not
+    // independently prove the FIPS formula, exhaustive coverage or period.
     #[test]
     fn small_sigma_1_test() {
         let mut x: u32 = 0x8000_0000;
