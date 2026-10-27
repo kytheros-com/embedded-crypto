@@ -201,8 +201,8 @@ mod tests {
 
     const SIGMA_BULK_TEST_NUM_ITERATIONS: u32 = 50_000;
 
-    // Candidate inverse linear maps over GF(2), one per sigma function.
-    // Entry i encodes column i: the inverse image of basis word 1 << i.
+    // Inverse matrices over GF(2), using row-vector multiplication.
+    // Entry i encodes row i: the image of basis vector 1 << i under the inverse transformation.
     // They are test oracles, not FIPS constants or NIST-published vectors.
     // Their generation method and independent review remain undocumented.
     const BIG_SIGMA_0_INVERSE: [u32; 32] = [
@@ -331,8 +331,8 @@ mod tests {
         }
     }
 
-    // Multiply a column-encoded 32 x 32 binary matrix by word vector x.
-    // Bit i of x selects column a[i]; XOR is addition over GF(2).
+    // Multiply a row vector x by a row-encoded 32 x 32 binary matrix.
+    // Bit i of x selects row a[i]; XOR is addition over GF(2).
     // The signed right shift expands the selected bit into a full mask.
     fn apply_matrix(x: u32, a: [u32; 32]) -> u32 {
         let mut results: u32 = 0;
