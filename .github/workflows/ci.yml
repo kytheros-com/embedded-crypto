@@ -45,6 +45,18 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all --check
 
+      - name: Check Rust source line lengths
+        run: |
+          find crates -type f -name '*.rs' \
+            -exec awk '
+              length($0) > 80 {
+                printf "%s:%d: %d characters (limit 80)\n",
+                       FILENAME, FNR, length($0)
+                failed = 1
+              }
+              END { exit failed }
+            ' {} +
+
       - name: Check workspace
         run: cargo check --workspace --all-targets --locked
 

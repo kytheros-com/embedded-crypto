@@ -202,7 +202,8 @@ mod tests {
     const SIGMA_BULK_TEST_NUM_ITERATIONS: u32 = 50_000;
 
     // Inverse matrices over GF(2), using row-vector multiplication.
-    // Entry i encodes row i: the image of basis vector 1 << i under the inverse transformation.
+    // Entry i encodes row i: the image of basis vector 1 << i under the
+    // inverse transformation.
     // They are test oracles, not FIPS constants or NIST-published vectors.
     // Their generation method and independent review remain undocumented.
     const BIG_SIGMA_0_INVERSE: [u32; 32] = [
