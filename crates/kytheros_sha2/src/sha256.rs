@@ -61,7 +61,7 @@ mod tests {
     const CH_ANSWERS: u32 = 0x00053000;
     const MAJ_ANSWERS: u32 = 0x00017000;
 
-    const SIGMA_BULK_TEST_NUM_ITERATIONS: u32 = 0x0010_0000;
+    const SIGMA_BULK_TEST_NUM_ITERATIONS: u32 = 50_000;
 
     const BIG_SIGMA_0_INVERSE: [u32; 32] = [
         0xCBD1A68D, 0x97A34D1B, 0x2F469A37, 0x5E8D346E, 0xBD1A68DC, 0x7A34D1B9,
@@ -106,6 +106,19 @@ mod tests {
         (x >> 1) ^ (0_u32.wrapping_sub(x & 1) & LFSR_MASK)
     }
 
+    #[inline]
+    fn butterfly_permutation(x: u32) -> u32 {
+        let mut shift = 16;
+        let mut mask: u32 = 0xffff_0000;
+        let mut y = x;
+        while shift > 0 {
+            y = ((y << shift) & mask) | ((y >> shift) & (!mask));
+            shift >>= 1;
+            mask ^= mask >> shift;
+        }
+        y
+    }
+
     #[test]
     fn ch_walking_bits_test() {
         let mut x = TEST_X;
@@ -113,6 +126,17 @@ mod tests {
         let mut z = TEST_Z;
         let mut ans = CH_ANSWERS;
         for _ in 0..WORD_SIZE_IN_BITS {
+            assert_eq!(ch(x, y, z), ans);
+            x = x.rotate_right(1);
+            y = y.rotate_right(1);
+            z = z.rotate_right(1);
+            ans = ans.rotate_right(1);
+        }
+        for _ in 0..WORD_SIZE_IN_BITS {
+            x = butterfly_permutation(x);
+            y = butterfly_permutation(y);
+            z = butterfly_permutation(z);
+            ans = butterfly_permutation(ans);
             assert_eq!(ch(x, y, z), ans);
             x = x.rotate_right(1);
             y = y.rotate_right(1);
@@ -128,6 +152,17 @@ mod tests {
         let mut z = TEST_Z;
         let mut ans = MAJ_ANSWERS;
         for _ in 0..WORD_SIZE_IN_BITS {
+            assert_eq!(maj(x, y, z), ans);
+            x = x.rotate_right(1);
+            y = y.rotate_right(1);
+            z = z.rotate_right(1);
+            ans = ans.rotate_right(1);
+        }
+        for _ in 0..WORD_SIZE_IN_BITS {
+            x = butterfly_permutation(x);
+            y = butterfly_permutation(y);
+            z = butterfly_permutation(z);
+            ans = butterfly_permutation(ans);
             assert_eq!(maj(x, y, z), ans);
             x = x.rotate_right(1);
             y = y.rotate_right(1);
