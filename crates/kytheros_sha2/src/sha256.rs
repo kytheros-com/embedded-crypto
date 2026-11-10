@@ -1,14 +1,17 @@
-//! SHA-256 bit packing and logical functions from NIST FIPS 180-4.
+//! SHA-256 input packing, schedule and logical functions, NIST FIPS 180-4.
 //!
 //! # Scope and algorithm decomposition
 //!
 //! This draft implements input-span validation, single-block bit packing,
-//! and the six logical functions shared by SHA-224 and SHA-256.
+//! message-schedule expansion, and the six logical functions shared by
+//! SHA-224 and SHA-256.
 //! In SHA-256 hash computation (§6.2.2), [`ch`], [`maj`],
 //! [`big_sigma_0`] and [`big_sigma_1`] combine working variables in each
 //! round; [`small_sigma_0`] and [`small_sigma_1`] expand the message
-//! schedule. Padding, parsing, initial values, round constants, schedule
-//! expansion, compression and digest output are not implemented here.
+//! schedule. The internal schedule decodes sixteen big-endian words and
+//! yields W_0 through W_63 using caller-owned circular working storage.
+//! Padding, hash initial values, round constants, compression and digest
+//! output are not implemented here.
 //! These functions alone cannot hash a message.
 //!
 //! # Word representation and function contract
@@ -17,7 +20,8 @@
 //! FIPS 180-4 §3.1, the most significant bit is the leftmost bit of the
 //! represented bit string. Operations on word values are independent of
 //! host byte order. [`BitSpan`] and [`pack_bits`] traverse bytes in slice
-//! order and bits MSb-first; future word parsing must use big-endian order.
+//! order and bits MSb-first. Schedule decoding explicitly uses big-endian
+//! byte order; schedule sums wrap modulo 2^32 (FIPS 180-4 §3.2).
 //!
 //! In the definitions below, AND, XOR and NOT operate bitwise, ROTR rotates
 //! a 32-bit word right, and SHR shifts right with zero fill (§3.2).
@@ -29,8 +33,9 @@
 //! # Kytheros integration design
 //!
 //! The planned Module Control Layer (MCL) owns authoritative cryptographic
-//! state and commits working-copy updates. These functions accept and return
-//! temporary word values; they neither access nor commit MCL state. MCL
+//! state and commits working-copy updates. Primitives use temporary word
+//! values or caller-provided working storage; they neither access nor
+//! commit MCL state. MCL
 //! ownership is a Kytheros architecture decision, not a FIPS 180-4 rule.
 //! The MCL and platform protection mechanisms are not implemented here.
 //! Lack of retained state does not establish erasure of register or stack
@@ -41,8 +46,9 @@
 //! This is an incomplete development implementation, not production-ready
 //! software. Unit tests exercise Boolean identities and sampled inverse-map
 //! consistency. Packing tests check alignment, boundaries and preservation
-//! against local text fixtures. These are not complete SHA-256 validation
-//! or module self-tests.
+//! against local text fixtures. Schedule tests compare a direct 64-word
+//! reference and independent arithmetic fixtures (see the schedule module).
+//! These are not complete SHA-256 validation or module self-tests.
 //! No independent audit, formal verification, CAVP algorithm validation or
 //! FIPS 140-3/CMVP module validation is claimed.
 //!
@@ -51,6 +57,11 @@
 //! are independently calculated illustrations, not NIST-published vectors.
 //!
 //! [fips]: https://doi.org/10.6028/NIST.FIPS.180-4
+
+// The internal schedule awaits the separately scoped compression stage.
+// Keep it compiled for no_std checks without adding a public API.
+#[allow(dead_code)]
+pub(crate) mod schedule;
 
 /// A validated borrowed bitstring, traversed MSb-first within each byte.
 ///

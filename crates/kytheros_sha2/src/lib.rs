@@ -2,9 +2,10 @@
 
 //! SHA-2 implementations for embedded and resource-constrained systems.
 //!
-//! Currently, SHA-256 input validation, single-block bit packing, and
-//! six logical word functions in [`sha256`] are implemented. These also
-//! apply to SHA-224; neither complete hash algorithm is available.
+//! Currently, SHA-256 input validation, single-block bit packing, internal
+//! message-schedule expansion and six logical word functions in [`sha256`]
+//! are implemented. These also apply to SHA-224; neither complete hash
+//! algorithm is available.
 //! The portable core uses `no_std` and no heap
 //! allocation. See the module for word representation, integration design,
 //! executable examples and the limits of development-test evidence.
