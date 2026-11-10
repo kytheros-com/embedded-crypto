@@ -1,18 +1,20 @@
-//! SHA-256 input packing, schedule and logical functions, NIST FIPS 180-4.
+//! SHA-256 input packing and block compression, NIST FIPS 180-4.
 //!
 //! # Scope and algorithm decomposition
 //!
 //! This draft implements input-span validation, single-block bit packing,
-//! message-schedule expansion, and the six logical functions shared by
+//! message-schedule expansion, block compression, and six functions shared by
 //! SHA-224 and SHA-256.
 //! In SHA-256 hash computation (§6.2.2), [`ch`], [`maj`],
 //! [`big_sigma_0`] and [`big_sigma_1`] combine working variables in each
 //! round; [`small_sigma_0`] and [`small_sigma_1`] expand the message
 //! schedule. The internal schedule decodes sixteen big-endian words and
 //! yields W_0 through W_63 using caller-owned circular working storage.
-//! Padding, hash initial values, round constants, compression and digest
-//! output are not implemented here.
-//! These functions alone cannot hash a message.
+//! Compression takes H_0 through H_7 as eight numeric 32-bit words,
+//! performs 64 rounds, and adds the final working words to the original
+//! chaining words modulo 2^32. It uses 16 caller-provided schedule words
+//! and eight temporary working words without dynamic allocation.
+//! Padding, hash initialization and digest output remain future stages.
 //!
 //! # Word representation and function contract
 //!
@@ -48,7 +50,9 @@
 //! consistency. Packing tests check alignment, boundaries and preservation
 //! against local text fixtures. Schedule tests compare a direct 64-word
 //! reference and independent arithmetic fixtures (see the schedule module).
-//! These are not complete SHA-256 validation or module self-tests.
+//! Compression tests check a direct reference, round checkpoints, workspace
+//! reuse and a [NIST NSRL][nsrl] single-block known answer. These are sampled
+//! functional development checks.
 //! No independent audit, formal verification, CAVP algorithm validation or
 //! FIPS 140-3/CMVP module validation is claimed.
 //!
@@ -56,11 +60,11 @@
 //! Function definitions follow §4.1.2, equations (4.2)–(4.7). Examples below
 //! are independently calculated illustrations, not NIST-published vectors.
 //!
+//! [nsrl]:
+//! https://nist.gov/itl/ai/ai-standards-and-guidelines-group/nsrl-test-data
 //! [fips]: https://doi.org/10.6028/NIST.FIPS.180-4
 
-// The internal schedule awaits the separately scoped compression stage.
-// Keep it compiled for no_std checks without adding a public API.
-#[allow(dead_code)]
+pub(crate) mod compression;
 pub(crate) mod schedule;
 
 /// A validated borrowed bitstring, traversed MSb-first within each byte.
