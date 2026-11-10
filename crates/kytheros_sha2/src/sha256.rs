@@ -474,8 +474,8 @@ mod tests {
     // The signed right shift expands the selected bit into a full mask.
     fn apply_matrix(x: u32, a: [u32; 32]) -> u32 {
         let mut results: u32 = 0;
-        for i in 0..32 {
-            results ^= ((((x << (31 - i)) as i32) >> 31) as u32) & a[i];
+        for (i, row) in a.iter().enumerate() {
+            results ^= ((((x << (31 - i)) as i32) >> 31) as u32) & row;
         }
         results
     }
