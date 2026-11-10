@@ -156,19 +156,34 @@ Identifiers representing words, blocks, elements, or indices shall explicitly id
 
 Conversions between bits and bytes shall be explicit and checked for overflow as appropriate.
 
-### 5.2 Bit and byte order
+### 5.2 Bit ordering, byte ordering, and serialization
 
-Documentation shall specify relevant representation conventions, including:
+Cryptographic implementations shall reproduce the representation and serialization conventions specified by their applicable normative standards.
 
-- Bit numbering and most/least significant bit.
-- Ordering of bits in partially filled bytes.
-- Byte ordering within multibyte words.
-- Message and output serialization order.
-- Bit-length encoding and padding conventions.
+No universal bit-ordering or byte-ordering convention is imposed across the repository. Different NIST-approved cryptographic algorithms use different conventions.
 
-SHA-2 implementations shall follow the applicable conventions of FIPS 180-4.
+Documentation for relevant interfaces and algorithms shall explicitly identify:
 
-No host-endianness assumption shall be implicit in portable algorithm code.
+- The ordering and significance of bits within bytes.
+- The ordering and significance of bytes within multibyte integers.
+- The mapping between byte strings and internal words, lanes, matrices, or polynomial coefficients.
+- The order in which partial bytes are filled when non-byte-aligned bitstrings are supported.
+- The serialization rules for externally visible cryptographic objects.
+- Any conversions required at boundaries between algorithms or components.
+
+Where applicable, documentation shall cite the exact specification sections defining these conventions.
+
+Implementations shall not depend on the host processor's native endianness to determine externally visible cryptographic representations.
+
+Internal representations may be selected for correctness, efficiency, portability, or security, provided that all specified conversions preserve normative behavior.
+
+Representation conversions shall be covered by tests using independently derived values or authoritative test vectors. Tests should include values that distinguish opposite bit-ordering and byte-ordering conventions.
+
+For algorithms with different conventions, conversions shall be explicit and localized to well-defined interfaces. Silent reinterpretation of a byte sequence as native integer storage is prohibited when it could change normative behavior.
+
+Bitstring interfaces shall explicitly define the starting bit position, logical bit length, bit traversal order, and treatment of partially occupied bytes. Where operations append to an existing bitstream, the contract shall also define the destination's current bit position, whether existing partial-byte contents are preserved, and how source and destination representations are reconciled.
+
+Storage requirements shall account for the starting bit offset and any representation-specific alignment or framing requirements. Implementations shall not assume that successive operations begin or end on byte boundaries unless the interface explicitly guarantees that property.
 
 ### 5.3 Matrix and vector conventions
 
