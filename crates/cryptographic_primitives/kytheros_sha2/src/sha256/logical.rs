@@ -241,15 +241,29 @@ mod tests {
     // preserves Ch/Maj because they act independently at each position.
     #[inline]
     fn butterfly_permutation(x: u32) -> u32 {
-        let mut shift = 16;
-        let mut mask: u32 = 0xffff_0000;
-        let mut y = x;
-        while shift > 0 {
-            y = ((y << shift) & mask) | ((y >> shift) & (!mask));
-            shift >>= 1;
-            mask ^= mask >> shift;
-        }
-        y
+        let y1 = (0xff_00_00_ff & x)
+            | (0x00_ff_ff_00
+                & ((0x00_00_ff_00 & (x >> 8)) | (0x00_ff_00_00 & (x << 8))));
+        let y2 = (0xf0_0f_f0_0f & y1)
+            | (0x0f_f0_0f_f0
+                & ((0x00_f0_00_f0 & (y1 >> 4)) | (0x0f_00_0f_00 & (y1 << 4))));
+        let y3 = (0xc3_c3_c3_c3 & y2)
+            | (0x3c_3c_3c_3c
+                & ((0x0c_0c_0c_0c & (y2 >> 2)) | (0x30_30_30_30 & (y2 << 2))));
+        let y4 = (0x99_99_99_99 & y3)
+            | (0x66_66_66_66
+                & ((0x22_22_22_22 & (y3 >> 1)) | (0x44_44_44_44 & (y3 << 1))));
+        let y5 = (0xc3_c3_c3_c3 & y4)
+            | (0x3c_3c_3c_3c
+                & ((0x0c_0c_0c_0c & (y4 >> 2)) | (0x30_30_30_30 & (y4 << 2))));
+        let y6 = (0xf0_0f_f0_0f & y5)
+            | (0x0f_f0_0f_f0
+                & ((0x00_f0_00_f0 & (y5 >> 4)) | (0x0f_00_0f_00 & (y5 << 4))));
+        let y7 = (0xff_00_00_ff & y6)
+            | (0x00_ff_ff_00
+                & ((0x00_00_ff_00 & (y6 >> 8)) | (0x00_ff_00_00 & (y6 << 8))));
+
+        y7
     }
 
     // Rotate truth-table fixtures through all bit positions, then mix
