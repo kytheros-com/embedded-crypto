@@ -1,5 +1,11 @@
-//! SHA-256 Round Constants per FIPS 180-4 §4.2.2, in round order.
-pub(crate) const SHA_256_ROUND_CONSTANTS: [u32; 64] = [
+//! SHA-256 round constants from FIPS 180-4 (August 2015), §4.2.2.
+//!
+//! These 64 numeric `u32` values are the first 32 bits of the fractional
+//! parts of the cube roots of the first 64 primes (2 through 311), in
+//! round order K_0 through K_63. They are also used by SHA-224.
+
+/// Normative constants in round order; no host-endian encoding is implied.
+pub(super) const SHA_256_ROUND_CONSTANTS: [u32; 64] = [
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
     0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
     0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,

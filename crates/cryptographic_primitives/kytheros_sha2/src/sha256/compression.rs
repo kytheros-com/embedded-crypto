@@ -1,8 +1,28 @@
-//! Single-block SHA-256 compression, FIPS 180-4 §6.2.2 steps 1–4.
+//! Single-block SHA-256 compression, FIPS 180-4 (August 2015), §6.2.2.
+//!
+//! Step 3 computes `T1 = h + Sigma_1(e) + Ch(e,f,g) + K_t + W_t` and
+//! `T2 = Sigma_0(a) + Maj(a,b,c)`, then replaces `(a,b,c,d,e,f,g,h)` by
+//! `(T1+T2,a,b,c,d+T1,e,f,g)`. All additions are modulo 2^32. Step 4
+//! adds the final working words to the original chaining words. The API
+//! below documents working-copy ownership, round invariants and workspace.
+//!
+//! Tests compare a direct 64-word schedule and alternative Boolean formulas
+//! across structured, single-bit and deterministic sampled blocks and four
+//! initial states. Round checkpoints and sequential-block workspace reuse
+//! are checked. The reference shares the production constants, so it cannot
+//! independently verify them. A manually padded ASCII "abc" block checks
+//! the combined result against the published [NIST NSRL test data][nsrl].
+//! This exercises compression, not an implemented padding or hashing API;
+//! sampled agreement does not establish exhaustive correctness, embedded
+//! execution, algorithm validation or module-level assurance.
+//!
+//! [nsrl]:
+//! https://nist.gov/itl/ai/ai-standards-and-guidelines-group/nsrl-test-data
 
-use super::schedule::MessageSchedule;
-use super::{big_sigma_0, big_sigma_1, ch, maj};
-use super::constants::SHA_256_ROUND_CONSTANTS as K;
+use super::{
+    MessageSchedule, SHA_256_ROUND_CONSTANTS as K, big_sigma_0, big_sigma_1,
+    ch, maj,
+};
 
 /// Applies FIPS 180-4 §6.2.2 to one complete 512-bit block.
 ///
@@ -21,7 +41,7 @@ use super::constants::SHA_256_ROUND_CONSTANTS as K;
 /// Every word addition wraps modulo 2^32 (§3.2). All input values are valid.
 /// A fresh schedule supplies exactly one word for each of the 64 constants,
 /// so the exhaustion check cannot fail with the current schedule contract.
-pub(crate) fn compress(
+pub(super) fn compress(
     state: &mut [u32; 8],
     block: &[u8; 64],
     schedule_workspace: &mut [u32; 16],
@@ -37,8 +57,9 @@ pub(crate) fn compress(
     }
 }
 
-// FIPS 180-4 §6.2.2 step 3, using §4.1.2 equations (4.2)–(4.5).
-fn round(
+/// One round, FIPS 180-4 §6.2.2 step 3 and §4.1.2 Eqs. (4.2)–(4.5).
+/// Accepts all working words, constants and schedule words without panic.
+pub(super) fn round(
     [a, b, c, d, e, f, g, h]: [u32; 8],
     constant: u32,
     word: u32,
@@ -52,13 +73,10 @@ fn round(
     [t1.wrapping_add(t2), a, b, c, d.wrapping_add(t1), e, f, g]
 }
 
-
 #[cfg(test)]
 mod tests {
-    use super::super::constants::SHA_256_ROUND_CONSTANTS as K;
-    use super::super::schedule::MessageSchedule;
     use super::*;
-    
+
     // FIPS 180-4 §5.3.3. The primitive accepts arbitrary chaining values.
     const IV: [u32; 8] = [
         0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c,
@@ -72,8 +90,8 @@ mod tests {
 
     // Direct FIPS schedule and array shifts for the working-state update.
     // This shares K with production, so differential agreement cannot verify
-    // the constants independently. The published abc digest checks the combined
-    // effect of the constants, schedule, rounds and feed-forward for one block.
+    // the constants independently. The published abc digest checks their
+    // combined effect with schedule, rounds and feed-forward for one block.
     fn reference(
         initial: [u32; 8],
         block: &[u8; 64],
@@ -100,8 +118,10 @@ mod tests {
         for t in 0..64 {
             let a = v[0];
             let e = v[4];
-            let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
-            let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
+            let s0 =
+                a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
+            let s1 =
+                e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
             let choose = v[6] ^ (e & (v[5] ^ v[6]));
             let majority = (a & v[1]) | ((a | v[1]) & v[2]);
             let delta = w[t]
@@ -170,18 +190,20 @@ mod tests {
         let mut state = IV;
         compress(&mut state, &block, &mut [0; 16]);
         let mut digest = [0; 32];
-        for (bytes, word) in digest.as_chunks_mut::<4>().0.iter_mut().zip(state) {
+        for (bytes, word) in digest.as_chunks_mut::<4>().0.iter_mut().zip(state)
+        {
             bytes.copy_from_slice(&word.to_be_bytes());
         }
 
         // NIST NSRL Test Data, SHA-256 example for the ASCII string "abc".
-        // NIST NSRL Test Data is linked from the SHA-256 module documentation.
+        // The source link is in this compression module's documentation.
         assert_eq!(
             digest,
             [
-                0xba, 0x78, 0x16, 0xbf, 0x8f, 0x01, 0xcf, 0xea, 0x41, 0x41, 0x40,
-                0xde, 0x5d, 0xae, 0x22, 0x23, 0xb0, 0x03, 0x61, 0xa3, 0x96, 0x17,
-                0x7a, 0x9c, 0xb4, 0x10, 0xff, 0x61, 0xf2, 0x00, 0x15, 0xad,
+                0xba, 0x78, 0x16, 0xbf, 0x8f, 0x01, 0xcf, 0xea, 0x41, 0x41,
+                0x40, 0xde, 0x5d, 0xae, 0x22, 0x23, 0xb0, 0x03, 0x61, 0xa3,
+                0x96, 0x17, 0x7a, 0x9c, 0xb4, 0x10, 0xff, 0x61, 0xf2, 0x00,
+                0x15, 0xad,
             ]
         );
     }
@@ -190,7 +212,8 @@ mod tests {
     fn round_checkpoints_and_feed_forward() {
         let block = core::array::from_fn(|i| i as u8);
         let mut schedule_workspace = [0; 16];
-        let mut schedule = MessageSchedule::new(&block, &mut schedule_workspace);
+        let mut schedule =
+            MessageSchedule::new(&block, &mut schedule_workspace);
         let mut working = ASYMMETRIC;
         let expected = reference(ASYMMETRIC, &block, |t, word, after_round| {
             let actual_word = schedule.next_word().unwrap();

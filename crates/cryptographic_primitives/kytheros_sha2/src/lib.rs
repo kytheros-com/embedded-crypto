@@ -2,13 +2,12 @@
 
 //! SHA-2 implementations for embedded and resource-constrained systems.
 //!
-//! Currently, SHA-256 input validation, single-block bit packing, internal
-//! message-schedule expansion, block compression and logical word functions
-//! in [`sha256`] are implemented. The word functions also apply to SHA-224.
-//! Complete hashing remains a future stage.
-//! The portable core uses `no_std` and no heap
-//! allocation. See the module for word representation, integration design,
-//! executable examples and the limits of development-test evidence.
+//! [`sha256::Sha256Context`] implements incremental SHA-256 hashing with
+//! arbitrary-bit updates, FIPS 180-4 padding and big-endian digest output.
+//! The word functions also apply to SHA-224; SHA-224 hashing is not
+//! implemented. The portable core uses safe Rust, `no_std` and no heap
+//! allocation. Callers supply sixteen schedule words per operation. See
+//! [`sha256`] for representation, ownership, examples and evidence limits.
 //!
 //! This crate is under active development and is not ready for production
 //! use. It is not independently audited or CAVP/CMVP validated. Planned

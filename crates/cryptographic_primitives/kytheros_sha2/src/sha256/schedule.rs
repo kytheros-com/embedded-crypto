@@ -1,5 +1,17 @@
 //! SHA-256 message schedule, FIPS 180-4 (August 2015), §6.2.2 step 1.
 //!
+//! For 16 <= t < 64, §6.2.2 step 1 defines
+//! `W_t = sigma_1(W_(t-2)) + W_(t-7) + sigma_0(W_(t-15)) + W_(t-16)`,
+//! with additions modulo 2^32. The first sixteen words are decoded directly
+//! from the block; the type contract below gives the circular invariants.
+//!
+//! Tests compare every word and retained window against a direct 64-word
+//! recurrence, including ring boundaries, exhaustion and workspace reuse.
+//! That reference shares sigma helpers; separate local arithmetic fixtures
+//! include a reproducible Python derivation and a hand-derived carry case.
+//! Structured, single-bit and deterministic sampled blocks are development
+//! evidence, not exhaustive or full-hash verification.
+//!
 //! Only the caller's sixteen `u32` words hold schedule data. A cursor
 //! records the next schedule index; no block copy or 64-word schedule is
 //! retained. This is temporary primitive working storage, not authoritative
@@ -23,7 +35,7 @@ use super::{small_sigma_0, small_sigma_1};
 /// the small-sigma functions follow §4.1.2, equations (4.6) and (4.7).
 /// Private fields and exclusive borrowing prevent caller mutation of the
 /// window or cursor while the schedule is active. The cursor stays 0..=64.
-pub(crate) struct MessageSchedule<'a> {
+pub(super) struct MessageSchedule<'a> {
     q: &'a mut [u32; 16],
     next_word_index: usize,
 }
@@ -38,7 +50,7 @@ impl<'a> MessageSchedule<'a> {
     /// Every initial value in `q` is overwritten. The block is not retained.
     /// Exact array types enforce the storage sizes; all byte indices are
     /// bounded by 63. Construction cannot fail or panic for any block.
-    pub(crate) fn new(block: &[u8; 64], q: &'a mut [u32; 16]) -> Self {
+    pub(super) fn new(block: &[u8; 64], q: &'a mut [u32; 16]) -> Self {
         for (word_index, word) in q.iter_mut().enumerate() {
             let offset_in_bytes = 4 * word_index;
             *word = u32::from_be_bytes([
@@ -60,7 +72,7 @@ impl<'a> MessageSchedule<'a> {
     /// All input words are supported without failure or panic. Subtractions
     /// occur only for `t >= 16`; ring indices are 0..16 and the cursor never
     /// exceeds 64. Each call uses scalar temporaries and no heap allocation.
-    pub(crate) fn next_word(&mut self) -> Option<u32> {
+    pub(super) fn next_word(&mut self) -> Option<u32> {
         let t = self.next_word_index;
         if t == 64 {
             return None;

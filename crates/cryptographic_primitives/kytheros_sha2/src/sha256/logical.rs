@@ -14,10 +14,18 @@
 //! In the definitions below, AND, XOR and NOT operate bitwise, ROTR rotates
 //! a 32-bit word right, and SHR shifts right with zero fill (§3.2).
 //! The six logical functions accept every `u32` value, return a word
-//! deterministically,
-//! and have no error or panic conditions. They allocate no storage on the
-//! heap, perform no I/O and retain no persistent internal state.
+//! deterministically, and have no error or panic conditions. They allocate
+//! no storage on the heap, perform no I/O and retain no persistent state.
 //!
+//! # Verification evidence
+//!
+//! Tests rotate Boolean truth-table fixtures and combine butterfly
+//! permutations with rotation to check positional behavior. Sigma tests sample
+//! inverse-map consistency using 50,000 deterministic LFSR states per
+//! function. Inverse matrices use row vectors over GF(2); their generation and
+//! independent review remain undocumented. These samples are not exhaustive
+//! proofs of the FIPS definitions. Test comments specify the generator and
+//! oracles.
 
 // 4.1.2 SHA-224 and SHA-256 Functions (32-bit words).
 
@@ -226,8 +234,9 @@ mod tests {
         (x >> 1) ^ (0_u32.wrapping_sub(x & 1) & LFSR_MASK)
     }
 
-    // Reverse bit order by swapping halves, then groups of 8, 4, 2, 1.
-    // Each stage uses complementary masks to select the exchanged groups.
+    // Permutes bit positions by reversing the five-bit binary representation
+    // of each position's index (radix-2 butterfly bit-reversal permutation).
+    // This is distinct from reversing the 32-bit word's bit order.
     // Applied to every operand and answer, any common bit permutation
     // preserves Ch/Maj because they act independently at each position.
     #[inline]

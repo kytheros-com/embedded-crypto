@@ -1,13 +1,16 @@
-//! SHA-256 input bit packing as specified in NIST FIPS 180-4.
+//! SHA-256 input-span validation and single-block bit packing.
 //!
-//! # Scope and algorithm decomposition
+//! Source offsets and logical lengths are measured in bits; source and
+//! destination traverse bytes in slice order and bits MSb-first, following
+//! FIPS 180-4 (August 2015) §3.1. Packing preserves partial-byte bits outside
+//! the written interval. API documentation defines bounds, errors, progress
+//! and caller-owned block reuse; padding is not implemented here.
 //!
-//! This draft implements input-span validation and single-block bit packing
-//!
-//! [`BitSpan`] and [`pack_bits`] traverse bytes in slice
-//! order and bits MSb-first.
-//!
-
+//! Tests cover all source/destination bit alignments for local text
+//! fixtures, empty spans, block boundaries, partial copies and rejection
+//! without writes. They do not establish complete hashing or timing
+//! properties; slice-capacity multiplication overflow cannot be exercised
+//! with a real slice of the required size in the safe hosted harness.
 
 /// A validated borrowed bitstring, traversed MSb-first within each byte.
 ///
@@ -64,15 +67,31 @@ impl<'a> BitSpan<'a> {
             len_in_bits,
         })
     }
+
+    /// Returns the validated logical length, not the backing slice capacity.
+    pub(super) const fn len_in_bits(self) -> usize {
+        self.len_in_bits
+    }
+
+    /// Removes a validated prefix; the remaining endpoint is unchanged.
+    /// Panics if the requested prefix exceeds the logical length.
+    pub(super) fn skip(self, consumed_in_bits: usize) -> Self {
+        assert!(consumed_in_bits <= self.len_in_bits);
+        Self {
+            input: self.input,
+            offset_in_bits: self.offset_in_bits + consumed_in_bits,
+            len_in_bits: self.len_in_bits - consumed_in_bits,
+        }
+    }
 }
 
 /// Progress from one call to [`pack_bits`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct PackingProgress {
+pub(super) struct PackingProgress {
     /// Number of leading logical source bits written by this call.
-    pub consumed_in_bits: usize,
+    pub(super) consumed_in_bits: usize,
     /// First unwritten destination position, in the inclusive range 0..=512.
-    pub destination_position_in_bits: usize,
+    pub(super) destination_position_in_bits: usize,
 }
 
 /// Copies a validated bitstring into one caller-owned 512-bit block.
@@ -104,7 +123,7 @@ pub struct PackingProgress {
 /// No allocation, native-endian conversion, MCL access, or retained state
 /// is involved. The caller owns all working storage and cleanup duties.
 /// This is input packing only: no padding or other hashing stage is done.
-pub fn pack_bits(
+pub(super) fn pack_bits(
     source: BitSpan<'_>,
     block: &mut [u8; 64],
     destination_offset_in_bits: usize,
