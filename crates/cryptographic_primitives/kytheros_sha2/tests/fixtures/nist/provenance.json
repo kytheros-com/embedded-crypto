@@ -21,6 +21,20 @@
           "path": "shabittestvectors/SHA256ShortMsg.rsp",
           "sha256": "3993d9bb135b37f9226420032630f0e34d9b20556160baa9d85546cc421f183e",
           "cases": 513
+        },
+        {
+          "path": "shabittestvectors/SHA256Monte.rsp",
+          "sha256": "a0dd9e7cb6ac6497360eca29a913327466c4c23763e6a2a1c43eb27d63ea72ac",
+          "cases": 100,
+          "record_type": "monte",
+          "intermediate_digests": 0
+        },
+        {
+          "path": "shabittestvectors/SHA256Monte.txt",
+          "sha256": "192c0b77bd699a8809c0617c66714a7ff59920683628696edf29a525bc8b581c",
+          "cases": 100,
+          "record_type": "monte",
+          "intermediate_digests": 500
         }
       ]
     },
@@ -43,6 +57,20 @@
           "path": "shabytetestvectors/SHA256ShortMsg.rsp",
           "sha256": "75e1cb83994638481808e225b9eb0c1ebd0c232d952ac42b61abce6363be283c",
           "cases": 65
+        },
+        {
+          "path": "shabytetestvectors/SHA256Monte.rsp",
+          "sha256": "29ea30c6bb4b84e425fb8c1d731c6bb852dac935825f2bd1143e5d3c4f10bfb9",
+          "cases": 100,
+          "record_type": "monte",
+          "intermediate_digests": 0
+        },
+        {
+          "path": "shabytetestvectors/SHA256Monte.txt",
+          "sha256": "0553303fe5b95ee2a5d8a1671e9bd94f403475e1a2f4ca43f59575cb39d03b3a",
+          "cases": 100,
+          "record_type": "monte",
+          "intermediate_digests": 500
         }
       ]
     }

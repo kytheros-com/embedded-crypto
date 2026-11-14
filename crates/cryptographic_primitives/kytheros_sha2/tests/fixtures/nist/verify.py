@@ -21,5 +21,6 @@ for entry in manifest["archives"]:
             assert data == source.read(fixture["path"]), fixture["path"]
             assert hashlib.sha256(data).hexdigest() == fixture["sha256"]
             if fixture["cases"] is not None:
-                assert data.count(b"Len =") == fixture["cases"]
+                key = b"COUNT =" if fixture.get("record_type") == "monte" else b"Len ="
+                assert data.count(key) == fixture["cases"]
             print(f"verified {fixture['path']}")

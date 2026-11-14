@@ -107,6 +107,57 @@ Existing local exhaustive padding tests, synthetic near-limit tests, and
 `context/reference_vectors.py` remain separate development evidence and are
 preserved. They are not relabeled as published NIST data.
 
+## Monte Carlo procedure and evidence
+
+The separate hosted integration target `tests/nist_sha256_monte.rs` implements
+SHAVS (updated May 21, 2014) §6.4, Figure 1. For each COUNT j = 0..99,
+MD_0 = MD_1 = MD_2 = Seed. For i = 3..1002 inclusive, it hashes
+M_i = MD_(i-3) || MD_(i-2) || MD_(i-1), shifts the three digests, compares
+MD_1002 with the response checkpoint, and sets Seed = MD_1002. The next
+outer iteration resets all three digests to that seed. Each message is
+96 bytes (768 bits), preserving serialized digest byte order, MSb first
+within each byte; SHA-256 digests serialize H_0 through H_7 big-endian.
+Each collection executes exactly 100,000 hashes and 100 primary comparisons.
+Every hash uses new(), BitSpan::new(), update(), and consuming finalize(),
+with a caller-owned 16-word workspace and one fixed 96-byte message array.
+There are no allocations in the hashing loop.
+
+The original bit and byte collections differ in bytes, checksums, seeds,
+and checkpoints; both execute, totaling 200,000 hashes and 200 primary
+checkpoint comparisons per complete Rust run. Neither substitutes for the
+other. SHAVS §6 states that MCT itself always uses byte-oriented messages.
+The READMEs explicitly define the intermediate indices as i = 3..7,
+without an offset. For every COUNT, both the published M and MDi are
+checked: 500 message and 500 digest comparisons per collection. Final MD
+in each intermediate file must also equal the corresponding response MD.
+There is no intermediate-index ambiguity in these sources.
+
+The strict parser requires one [L = 32], a 32-byte Seed, ordered COUNT
+0..99 and corresponding 32-byte MD fields; the detailed grammar additionally
+requires the five ordered tab-indented i/M/MDi groups, with 96-byte M.
+Header comments and blank lines are allowed; unknown records, malformed
+hex, missing or duplicated fields, wrong lengths, out-of-order counts,
+truncation and extra records fail. Missing fixtures fail. Synthetic parser,
+rolling-state and mismatch-detection tests are local tests, not NIST vectors.
+
+All four files are extracted unchanged with original CRLF; Git attributes
+preserve these bytes. The manifest records each checksum and archive path.
+
+| Collection/file | SHA-256 |
+| --- | --- |
+| `shabittestvectors/SHA256Monte.rsp` | `a0dd9e7cb6ac6497360eca29a913327466c4c23763e6a2a1c43eb27d63ea72ac` |
+| `shabittestvectors/SHA256Monte.txt` | `192c0b77bd699a8809c0617c66714a7ff59920683628696edf29a525bc8b581c` |
+| `shabytetestvectors/SHA256Monte.rsp` | `29ea30c6bb4b84e425fb8c1d731c6bb852dac935825f2bd1143e5d3c4f10bfb9` |
+| `shabytetestvectors/SHA256Monte.txt` | `0553303fe5b95ee2a5d8a1671e9bd94f403475e1a2f4ca43f59575cb39d03b3a` |
+
+`tests/fixtures/nist/verify_monte.py` separately computes the recurrence
+using Python 3 hashlib and a digest history list, independently of Rust's
+rolling triple. It compares all primary checkpoints and all first-five
+M/MDi pairs for both collections. These computed results are reference
+results, distinct from both official expectations and Rust results.
+`verify.py` checks exact extraction equality and all retained checksums;
+checksums establish local integrity, not independent NIST authentication.
+
 ## Reproduction and CI
 
 From the repository root:
@@ -114,7 +165,9 @@ From the repository root:
 ```sh
 python3 crates/cryptographic_primitives/kytheros_sha2/tests/fixtures/nist/verify.py
 cargo test -p kytheros_sha2 --test nist_sha256 --locked --offline -- --nocapture
-cargo test --workspace --all-targets --locked
+python3 crates/cryptographic_primitives/kytheros_sha2/tests/fixtures/nist/verify_monte.py
+cargo test -p kytheros_sha2 --test nist_sha256_monte --locked --offline
+cargo test --workspace --all-targets --locked --offline
 ```
 
 `verify.py` uses Python's `hashlib` and `zipfile` to check both archive
@@ -129,16 +182,10 @@ new dependency, firmware fixture inclusion or ignored test is needed.
 Rustfmt, Clippy, Rustdoc, line-length and embedded-target checks remain
 required. The original archives remain in place; extraction is unnecessary
 at test time. Particular outcomes and revision/environment identification
-belong in [execution records](sha256-validation-runs/2026-11-14.md), not in
+belong in [execution records](sha256-validation-runs/2026-11-14.md), and [Monte Carlo results](sha256-validation-runs/2026-11-14-monte.md), not in
 this methodology as a permanent passing claim.
 
 ## Coverage limits and review
-
-Monte Carlo coverage is explicitly deferred. The READMEs reference SHAVS
-Figure 1 and inner iterations 3 through 1002. SHAVS §6.4 defines an iterative
-procedure; its seed/count results are not ordinary independent messages.
-`SHA256Monte.rsp` and `SHA256Monte.txt` remain available inside the original
-archives but are not extracted or executed by this harness.
 
 These published NIST CAVP test vectors support internal algorithm-correctness
 verification only. Passing does not constitute official CAVP validation,
