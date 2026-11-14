@@ -195,3 +195,130 @@ or a complete module cryptographic self-test design. Hosted execution is
 not execution on embedded hardware. Human review must assess provenance,
 parser interpretation, evidence sufficiency and integration changes.
 AI-generated work remains unapproved until accepted through project review.
+
+## Kytheros fragmented-update Monte Carlo stress testing
+
+This additional procedure is designed by Kytheros; NIST does not prescribe
+this partitioning. Official NIST seeds, intermediate values and final
+checkpoints remain the expectations. The shared SHAVS §6.4 recurrence is
+unchanged. The test exercises the public incremental API and arbitrary-bit
+packing with MSb-first source fragments, in serialized digest byte order.
+This is functional correctness evidence, not formal certification.
+
+The hosted integration target
+[`sha256_fragmented_monte.rs`](../../crates/cryptographic_primitives/kytheros_sha2/tests/sha256_fragmented_monte.rs)
+uses the parser, single-update hash and recurrence extracted without
+behavior changes into
+[`support/monte.rs`](../../crates/cryptographic_primitives/kytheros_sha2/tests/support/monte.rs).
+Existing NIST parser, shifting and mismatch tests still run in the original
+target. Production source, ordinary-message tests and all fixture bytes and
+expectations remain unchanged. Cargo automatically discovers the new target;
+no feature, dependency, workflow change or firmware fixture inclusion is needed.
+
+### Deterministic partition schedule
+
+Let `n = COUNT * 1000 + i - 3` (0 through 99,999 per collection), and select
+slot `n % 32`. The 32 precomputed slots are:
+
+| Slots | Nonempty fragment lengths in bits |
+| --- | --- |
+| 0 | 768 fragments of one bit |
+| 1 | 256 fragments of three bits |
+| 2 | Cyclic irregular list, rotation zero, clipped at message end |
+| 3 | 13, 499, 1, 255 (endpoint 512 after two updates) |
+| 4–11 | 1+767, 767+1, 447+321, 448+320, 449+319, 511+257, 512+256, 513+255 |
+| 12–31 | Irregular rotations `(slot - 12) % 9` |
+
+The irregular list is `[1,3,5,7,9,13,17,31,63]`, repeated cyclically from
+the selected rotation until exactly 768 bits are consumed; the final length
+is clipped to the remaining bits. Repeated rotations deliberately weight
+small odd-length fragments. Every slot occurs 3,125 times per collection.
+Each message has at least two nonempty updates. Fragment endpoint addition
+is checked, lengths must be positive, no endpoint may exceed 768, and the
+final endpoint must equal 768. The ordinary path uses `BitSpan` directly at
+the accumulated logical offset into the original 96-byte message.
+
+For `n % 64 == 0`, empty updates are inserted before the message, after the
+first fragment, and after the final fragment at offset 768. All 1,563 such
+messages per collection are directly compared with a single-update digest.
+For `n % 8000 == 0`, 13 of those messages are also replayed through the same
+fragmentation and relocation settings with empty updates removed.
+
+For `n % 1000 == 0`, all fragments of the message are separately relocated
+into a caller-owned 97-byte temporary array. Fragment ordinal k is placed at
+source offset `1 + k % 8`, covering offsets 1 through 8 with MSb-first bit
+copies and nonzero outside-span sentinels. There are 100 relocated recurrence
+messages per collection, plus 13 relocated empty-free replays. No production
+`pack_bits` is used for relocation or as a reference oracle.
+
+### Harness verification and differential sampling
+
+Every one of the 32 partition slots is independently reconstructed on all
+768 one-hot 96-byte inputs (24,576 cases). The test tracks each source
+position exactly once, verifies positive lengths, order, checked endpoints,
+complete consumption and final offset 768. Relocated fragments are decoded
+through independently formatted eight-character binary byte strings and
+concatenated for exact comparison with the original MSb-first message text.
+This exhausts the finite partition schedule and all one-hot positions,
+including source and logical destination alignment. It is separate from the
+Monte Carlo loop; reconstruction is not repeated on every Monte Carlo input.
+The relocation constructor and hashing path share caller-storage preparation,
+while the textual reconstruction checks that preparation independently.
+
+At every COUNT, inner iterations 3 through 7 and 1002, and every message
+with empty updates, are directly compared with the existing single-update
+public API helper. The union is 2,150 comparisons per collection. This
+supplements all 100 official checkpoints and 500 published intermediate
+message/digest pairs per collection. Intermediate-file final MD values are
+also checked against response MD values. Failures in message hashing or
+comparison report collection/source, COUNT, i, schedule slot and the complete
+fragment-length list; underlying assertions report actual and expected values.
+
+### Counts, reproduction and limitations
+
+A complete new-target run executes 200,000 recurrence hashes (100,000 per
+collection), plus 4,300 single-update differential hashes and 26 empty-free
+fragmented replays: 204,326 hashes in total. Per collection, recurrence updates
+are 6,420,314, including 4,689 empty calls. Supplemental checks add 12,134
+updates (2,150 single calls and 9,984 replay calls). Across both collections,
+there are **12,864,896 update calls**, of which 12,840,628 belong to the
+recurrence. Reconstruction checks do not hash or call update.
+
+An internal boundary means an endpoint between consecutive nonempty
+fragments, excluding empty calls and the final endpoint. Per collection,
+5,568,750 of 6,315,625 internal boundaries are non-byte-aligned:
+**88.1741712%**. Recurrence endpoint coverage per collection is:
+
+| Logical endpoint in bits | Occurrences |
+| ---: | ---: |
+| 447 | 75,000 |
+| 448 | 18,750 |
+| 449 | 6,250 |
+| 511 | 12,500 |
+| 512 | 9,375 |
+| 513 | 12,500 |
+| 767 | 12,500 |
+| 768 (message end) | 100,000 |
+
+Offline reproduction from the repository root:
+
+```sh
+cargo test -p kytheros_sha2 --test sha256_fragmented_monte --locked --offline -- --nocapture
+cargo test --workspace --all-targets --locked --offline
+```
+
+The test reports counts and elapsed time. Observed outcomes, toolchain,
+revision and full checks are in the separate
+[fragmented execution record](sha256-validation-runs/2026-11-14-fragmented-monte.md).
+No allocation or diagnostic formatting occurs in successful hash loops;
+patterns and parsed fixtures allocate once before those loops.
+
+The finite schedule does not exhaust all partitions, all bitstrings or all
+source placements. Direct differential checks use the same cryptographic
+implementation and are fault-isolation evidence, not an independent hash
+oracle. Published checkpoints and intermediate values provide separate
+expected values. Functional results do not establish timing, side-channel,
+zeroization, fault resistance, formal CAVP/ACVTS or CMVP validation, or
+embedded-hardware execution. Existing archive-authenticity limitations apply.
+Human review must assess the schedule, reconstruction oracle, shared-code
+extraction and evidence sufficiency; AI-generated work remains unapproved.
