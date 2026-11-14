@@ -241,13 +241,11 @@ mod tests {
     // preserves Ch/Maj because they act independently at each position.
     #[inline]
     fn butterfly_permutation(x: u32) -> u32 {
-        let mut y: u32 = 0;
-        for i in 0_u32..=31 {
-            y <<= 1;
-            let j = (31 - i).reverse_bits() >> 27;
-            y |= 1 & (x >> j);
-        }
-        y
+        let y1 = (((x << 15) & 0x5555_0000) | (x & 0xaaaa_0000))
+            | (((x >> 15) & 0x0000_aaaa) | (x & 0x0000_5555));
+        let y2 = (((y1 << 6) & 0x3300_3300) | (y1 & 0xcc_00_cc_00))
+            | (((y1 >> 6) & 0x00_cc_00_cc) | (y1 & 0x00_33_00_33));
+        y2
     }
 
     #[test]
