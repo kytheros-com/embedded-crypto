@@ -1,0 +1,50 @@
+{
+  "received_date": "2026-11-14",
+  "origin": "User supplied repository archives; original download date unknown. Checksums establish integrity, not independent authenticity.",
+  "archives": [
+    {
+      "filename": "shabittestvectors.zip",
+      "url": "https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/shs/shabittestvectors.zip",
+      "sha256": "cd7b9f11680c6e0ccdbe13b28403f2017b5ff48789152162461e0a24fb4c5d45",
+      "files": [
+        {
+          "path": "shabittestvectors/Readme.txt",
+          "sha256": "24bf370543f9521f7eb44f49e8d489ac9e45a21126f883d8e32e7fffd1d10227",
+          "cases": null
+        },
+        {
+          "path": "shabittestvectors/SHA256LongMsg.rsp",
+          "sha256": "a6228c355f9c35faf37658d1290fa9044b252204056b4db56eb1d5a623be9897",
+          "cases": 512
+        },
+        {
+          "path": "shabittestvectors/SHA256ShortMsg.rsp",
+          "sha256": "3993d9bb135b37f9226420032630f0e34d9b20556160baa9d85546cc421f183e",
+          "cases": 513
+        }
+      ]
+    },
+    {
+      "filename": "shabytetestvectors.zip",
+      "url": "https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/shs/shabytetestvectors.zip",
+      "sha256": "929ef80b7b3418aca026643f6f248815913b60e01741a44bba9e118067f4c9b8",
+      "files": [
+        {
+          "path": "shabytetestvectors/Readme.txt",
+          "sha256": "24bf370543f9521f7eb44f49e8d489ac9e45a21126f883d8e32e7fffd1d10227",
+          "cases": null
+        },
+        {
+          "path": "shabytetestvectors/SHA256LongMsg.rsp",
+          "sha256": "6fac36f37360bcf74ffcf4465c18e30d6d5a04cc90885b901fc3130c16060974",
+          "cases": 64
+        },
+        {
+          "path": "shabytetestvectors/SHA256ShortMsg.rsp",
+          "sha256": "75e1cb83994638481808e225b9eb0c1ebd0c232d952ac42b61abce6363be283c",
+          "cases": 65
+        }
+      ]
+    }
+  ]
+}

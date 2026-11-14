@@ -1,0 +1,3 @@
+# Preserve original NIST file bytes, including CRLF, on every checkout.
+*.rsp -text
+Readme.txt -text
