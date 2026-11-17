@@ -5,7 +5,8 @@
 ## Scope and references
 
 The implementation is `kytheros_sha2` 0.1.0, portable safe Rust SHA-256,
-`src/sha256/`, using the exported `Sha256Context` and `BitSpan` APIs.
+`src/sha256.rs` and `src/sha256/`, using the exported `Sha256Context` and
+`BitSpan` APIs.
 The algorithm reference is [FIPS 180-4 (August 2015)](https://doi.org/10.6028/NIST.FIPS.180-4),
 §§3.1–3.2 (representation), §5.1.1 (padding), §5.2.1 (blocks),
 §5.3.3 (initialization), and §6.2.2 (hash computation).
@@ -27,15 +28,15 @@ NIST publishes these collections on its
 - [shabittestvectors.zip](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/shs/shabittestvectors.zip)
 - [shabytetestvectors.zip](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/shs/shabytetestvectors.zip)
 
-Both original archives were already tracked under
-`crates/cryptographic_primitives/kytheros_sha2/src/sha256/NIST_KAT_Files/`.
+Both original archives are now retained under
+`crates/cryptographic_primitives/kytheros_sha2/tests/NIST_KAT_Files/`.
 The user identified these supplied archives on 2026-11-14. Their original
 network acquisition date and independent authenticity verification are
 unknown. A sandbox download attempt failed DNS resolution; no fresh download
 was used. Original contents were available locally and inspected.
 
 The machine-readable
-[provenance manifest](../../crates/cryptographic_primitives/kytheros_sha2/tests/fixtures/nist/provenance.json)
+[provenance manifest](../../crates/cryptographic_primitives/kytheros_sha2/tests/sha256_tests/fixtures/nist/provenance.json)
 records official URLs, exact archive filenames, SHA-256 integrity checksums,
 receipt date, internal ZIP paths, extracted-file checksums and case counts.
 These checksums identify observed bytes; they are not NIST signatures or
@@ -49,7 +50,8 @@ Archive integrity checksums:
 | `shabittestvectors.zip` | `cd7b9f11680c6e0ccdbe13b28403f2017b5ff48789152162461e0a24fb4c5d45` |
 | `shabytetestvectors.zip` | `929ef80b7b3418aca026643f6f248815913b60e01741a44bba9e118067f4c9b8` |
 
-Extracted fixtures reside under `kytheros_sha2/tests/fixtures/nist/`, using
+Extracted fixtures reside under
+`kytheros_sha2/tests/sha256_tests/fixtures/nist/`, using
 unchanged archive-internal paths. Both `Readme.txt` files are preserved in
 full, including original line endings. Message and digest values are not
 rewritten. Each README has SHA-256
@@ -64,7 +66,7 @@ rewritten. Each README has SHA-256
 
 ## Harness and interpretation
 
-[The integration harness](../../crates/cryptographic_primitives/kytheros_sha2/tests/nist_sha256.rs)
+[The integration harness](../../crates/cryptographic_primitives/kytheros_sha2/tests/sha256_tests/nist_sha256.rs)
 reads the four retained response files at runtime. Each ordinary case
 constructs `Sha256Context`, validates `BitSpan`, supplies sixteen `u32`
 schedule words, calls `update`, then consuming `finalize`, and compares
@@ -104,12 +106,14 @@ NIST values. Empty input includes an empty update. This covers varying source
 alignments and block crossings but not every possible partition.
 
 Existing local exhaustive padding tests, synthetic near-limit tests, and
-`context/reference_vectors.py` remain separate development evidence and are
+`tests/sha256_tests/unit_tests/context_reference_vectors.py` remain separate
+development evidence and are
 preserved. They are not relabeled as published NIST data.
 
 ## Monte Carlo procedure and evidence
 
-The separate hosted integration target `tests/nist_sha256_monte.rs` implements
+The separate hosted integration target
+`tests/sha256_tests/nist_sha256_monte.rs` implements
 SHAVS (updated May 21, 2014) §6.4, Figure 1. For each COUNT j = 0..99,
 MD_0 = MD_1 = MD_2 = Seed. For i = 3..1002 inclusive, it hashes
 M_i = MD_(i-3) || MD_(i-2) || MD_(i-1), shifts the three digests, compares
@@ -150,7 +154,8 @@ preserve these bytes. The manifest records each checksum and archive path.
 | `shabytetestvectors/SHA256Monte.rsp` | `29ea30c6bb4b84e425fb8c1d731c6bb852dac935825f2bd1143e5d3c4f10bfb9` |
 | `shabytetestvectors/SHA256Monte.txt` | `0553303fe5b95ee2a5d8a1671e9bd94f403475e1a2f4ca43f59575cb39d03b3a` |
 
-`tests/fixtures/nist/verify_monte.py` separately computes the recurrence
+`tests/sha256_tests/fixtures/nist/verify_monte.py` separately computes the
+recurrence
 using Python 3 hashlib and a digest history list, independently of Rust's
 rolling triple. It compares all primary checkpoints and all first-five
 M/MDi pairs for both collections. These computed results are reference
@@ -163,9 +168,9 @@ checksums establish local integrity, not independent NIST authentication.
 From the repository root:
 
 ```sh
-python3 crates/cryptographic_primitives/kytheros_sha2/tests/fixtures/nist/verify.py
+python3 crates/cryptographic_primitives/kytheros_sha2/tests/sha256_tests/fixtures/nist/verify.py
 cargo test -p kytheros_sha2 --test nist_sha256 --locked --offline -- --nocapture
-python3 crates/cryptographic_primitives/kytheros_sha2/tests/fixtures/nist/verify_monte.py
+python3 crates/cryptographic_primitives/kytheros_sha2/tests/sha256_tests/fixtures/nist/verify_monte.py
 cargo test -p kytheros_sha2 --test nist_sha256_monte --locked --offline
 cargo test --workspace --all-targets --locked --offline
 ```
@@ -176,11 +181,14 @@ record counts without invoking the Rust implementation. The Cargo harness
 also checks response-file checksums through the public Rust API as an
 integrity regression check; that check is not an independent hash oracle.
 
-Cargo automatically discovers the integration target, so the existing CI
-workspace test command executes it. No workflow change, test-time download,
-new dependency, firmware fixture inclusion or ignored test is needed.
+Integration tests are explicitly declared in the crate's Cargo.toml file,
+so the existing CI workspace test command executes it. No workflow change,
+test-time download, new dependency, firmware fixture inclusion or ignored
+test is needed.
 Rustfmt, Clippy, Rustdoc, line-length and embedded-target checks remain
-required. The original archives remain in place; extraction is unnecessary
+required. The original archives are located at
+`crates/cryptographic_primitives/kytheros_sha2/tests/NIST_KAT_Files`;
+extraction is unnecessary
 at test time. Particular outcomes and revision/environment identification
 belong in [execution records](sha256-validation-runs/2026-11-14.md), and [Monte Carlo results](sha256-validation-runs/2026-11-14-monte.md), not in
 this methodology as a permanent passing claim.
@@ -206,13 +214,14 @@ packing with MSb-first source fragments, in serialized digest byte order.
 This is functional correctness evidence, not formal certification.
 
 The hosted integration target
-[`sha256_fragmented_monte.rs`](../../crates/cryptographic_primitives/kytheros_sha2/tests/sha256_fragmented_monte.rs)
+[`sha256_fragmented_monte.rs`](../../crates/cryptographic_primitives/kytheros_sha2/tests/sha256_tests/sha256_fragmented_monte.rs)
 uses the parser, single-update hash and recurrence extracted without
 behavior changes into
-[`support/monte.rs`](../../crates/cryptographic_primitives/kytheros_sha2/tests/support/monte.rs).
+[`support/monte.rs`](../../crates/cryptographic_primitives/kytheros_sha2/tests/sha256_tests/support/monte.rs).
 Existing NIST parser, shifting and mismatch tests still run in the original
 target. Production source, ordinary-message tests and all fixture bytes and
-expectations remain unchanged. Cargo automatically discovers the new target;
+expectations remain unchanged. Cargo includes the new target through its
+explicit [[test]] declaration;
 no feature, dependency, workflow change or firmware fixture inclusion is needed.
 
 ### Deterministic partition schedule
@@ -322,3 +331,13 @@ zeroization, fault resistance, formal CAVP/ACVTS or CMVP validation, or
 embedded-hardware execution. Existing archive-authenticity limitations apply.
 Human review must assess the schedule, reconstruction oracle, shared-code
 extraction and evidence sufficiency; AI-generated work remains unapproved.
+
+
+## Repository reorganization (November 16, 2026).
+
+The SHA-256 source and verification directories were reorganized after the
+original validation-evidence runs. Historical execution records retain their
+original file paths, commands, and source checksums. The reproduction
+instructions in this methodology document describe the current repository
+layout. Reproducing an earlier recorded run exactly requires checking out its
+recorded source revision.
