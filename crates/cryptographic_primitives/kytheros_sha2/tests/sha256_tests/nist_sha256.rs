@@ -109,7 +109,7 @@ fn digest(message: &[u8], len_in_bits: usize) -> [u8; 32] {
 
 fn load(file: &str, count: usize, checksum: &str) -> Vec<Case> {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/nist")
+        .join("tests/sha256_tests/fixtures/nist")
         .join(file);
     let bytes = fs::read(&path).unwrap_or_else(|e| {
         panic!("required NIST fixture {}: {e}", path.display())

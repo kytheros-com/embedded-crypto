@@ -183,4 +183,5 @@ fn pad_block(block: &mut [u8; 64], buffered_in_bits: usize) -> bool {
 }
 
 #[cfg(test)]
+#[path = "../../tests/sha256_tests/unit_tests/context_unit_tests.rs"]
 mod tests;

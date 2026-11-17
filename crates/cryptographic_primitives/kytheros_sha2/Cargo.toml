@@ -11,3 +11,14 @@ publish = false
 [lints]
 workspace = true
 
+[[test]]
+name = "nist_sha256"
+path = "tests/sha256_tests/nist_sha256.rs"
+
+[[test]]
+name = "nist_sha256_monte"
+path = "tests/sha256_tests/nist_sha256_monte.rs"
+
+[[test]]
+name = "sha256_fragmented_monte"
+path = "tests/sha256_tests/sha256_fragmented_monte.rs"
