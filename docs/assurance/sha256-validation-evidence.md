@@ -28,7 +28,7 @@ NIST publishes these collections on its
 - [shabittestvectors.zip](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/shs/shabittestvectors.zip)
 - [shabytetestvectors.zip](https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/shs/shabytetestvectors.zip)
 
-Both original archives were already tracked under
+Both original archives are now retained under
 `crates/cryptographic_primitives/kytheros_sha2/tests/NIST_KAT_Files/`.
 The user identified these supplied archives on 2026-11-14. Their original
 network acquisition date and independent authenticity verification are
@@ -112,7 +112,8 @@ preserved. They are not relabeled as published NIST data.
 
 ## Monte Carlo procedure and evidence
 
-The separate hosted integration target `tests/nist_sha256_monte.rs` implements
+The separate hosted integration target
+`tests/sha256_tests/nist_sha256_monte.rs` implements
 SHAVS (updated May 21, 2014) §6.4, Figure 1. For each COUNT j = 0..99,
 MD_0 = MD_1 = MD_2 = Seed. For i = 3..1002 inclusive, it hashes
 M_i = MD_(i-3) || MD_(i-2) || MD_(i-1), shifts the three digests, compares
@@ -219,7 +220,8 @@ behavior changes into
 [`support/monte.rs`](../../crates/cryptographic_primitives/kytheros_sha2/tests/sha256_tests/support/monte.rs).
 Existing NIST parser, shifting and mismatch tests still run in the original
 target. Production source, ordinary-message tests and all fixture bytes and
-expectations remain unchanged. Cargo automatically discovers the new target;
+expectations remain unchanged. Cargo includes the new target through its
+explicit [[test]] declaration;
 no feature, dependency, workflow change or firmware fixture inclusion is needed.
 
 ### Deterministic partition schedule
@@ -331,7 +333,7 @@ Human review must assess the schedule, reconstruction oracle, shared-code
 extraction and evidence sufficiency; AI-generated work remains unapproved.
 
 
-# Repository reorganization (November 16, 2026).
+## Repository reorganization (November 16, 2026).
 
 The SHA-256 source and verification directories were reorganized after the
 original validation-evidence runs. Historical execution records retain their
