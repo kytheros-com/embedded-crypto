@@ -13,7 +13,7 @@ root = Path(__file__).resolve().parent
 crate = root.parents[2]
 manifest = json.loads((root / "provenance.json").read_text())
 for entry in manifest["archives"]:
-    archive = crate / "src/sha256/NIST_KAT_Files" / entry["filename"]
+    archive = crate / "tests/NIST_KAT_Files" / entry["filename"]
     assert hashlib.sha256(archive.read_bytes()).hexdigest() == entry["sha256"]
     with zipfile.ZipFile(archive) as source:
         for fixture in entry["files"]:

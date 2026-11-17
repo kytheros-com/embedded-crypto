@@ -55,7 +55,8 @@
 //! Context tests add published byte-oriented known answers, locally derived
 //! arbitrary-bit reference values, all partial-block padding sizes, split
 //! equivalence and synthetic near-limit length checks. The standalone
-//! `context/reference_vectors.py` reproduces the local fixtures and checks
+//! `tests/sha256_tests/unit_tests/reference_vectors.py`
+//! reproduces the local fixtures and checks
 //! byte-aligned reference calculations with Python's `hashlib`.
 //! These are functional development checks, not module self-tests or
 //! evidence of constant-time execution, side-channel or fault resistance,
