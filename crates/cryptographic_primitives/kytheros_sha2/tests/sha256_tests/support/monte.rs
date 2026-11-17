@@ -63,7 +63,7 @@ pub fn parse(text: &str, intermediate: bool) -> Monte {
 
 pub fn load(file: &str, intermediate: bool) -> Monte {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/nist")
+        .join("tests/sha256_tests/fixtures/nist")
         .join(file);
     let text = fs::read_to_string(&path)
         .unwrap_or_else(|error| panic!("{}: {error}", path.display()));
