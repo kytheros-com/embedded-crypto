@@ -9,6 +9,8 @@
 //! allocation. Callers supply sixteen schedule words per operation. See
 //! [`sha256`] for representation, ownership, examples and evidence limits.
 //!
+//! [`sha512`] provides the six SHA-512 logical word functions.
+//!
 //! This crate is under active development and is not ready for production
 //! use. It is not independently audited or CAVP/CMVP validated. Planned
 //! MCL/PIL integration does not establish module validation.
@@ -17,3 +19,4 @@
 extern crate std;
 
 pub mod sha256;
+pub mod sha512;
