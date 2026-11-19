@@ -12,10 +12,17 @@
 //! [fips]: https://doi.org/10.6028/NIST.FIPS.180-4
 
 mod logical;
-// The private schedule will be consumed when compression is integrated.
-// In the interim, the code is unused. The linter is alerted to that here,
-// but this must be corrected when the compression function is added.
-#[expect(dead_code, reason = "SHA-512 compression will consume this schedule")]
+
+// The schedule has no production caller until compression is implemented.
+// Unit tests exercise the schedule directly, so no exception is needed
+// when compiling the test configuration.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "SHA-512 compression will consume this schedule"
+    )
+)]
 mod schedule;
 
 pub use logical::{
