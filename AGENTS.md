@@ -76,6 +76,18 @@ Also apply the repository's CI line-length and supported embedded-target checks.
 
 Report tests that could not be executed. Never claim unobserved results.
 
+### Verification integrity
+
+Do not weaken or bypass compiler diagnostics, lints, tests, assertions, or CI checks merely to obtain passing results.
+
+- Do not introduce `#[allow(...)]`, `#[cfg(...)]` exclusions, skipped or ignored tests, or equivalent verification suppressions without explicit authorization.
+- For a temporary, expected lint arising from incremental development, prefer a narrowly scoped `#[expect(...)]` with a documented reason and a clear condition for its removal.
+- Do not weaken assertions, reduce test coverage, or change expected results solely to make failing tests pass.
+- Investigate and report verification failures. Correct their underlying causes when within the authorized task scope.
+- Report all introduced verification exceptions in the task completion summary, including their justification and removal conditions.
+
+Existing verification exceptions are not automatically authorized precedents for new ones.
+
 ## 6. Task completion
 
 Summarize:
