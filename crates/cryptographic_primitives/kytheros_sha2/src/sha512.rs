@@ -11,6 +11,7 @@
 //!
 //! [fips]: https://doi.org/10.6028/NIST.FIPS.180-4
 
+mod constants;
 mod logical;
 
 // The schedule has no production caller until compression is implemented.
