@@ -22,3 +22,15 @@ path = "tests/sha256_tests/nist_sha256_monte.rs"
 [[test]]
 name = "sha256_fragmented_monte"
 path = "tests/sha256_tests/sha256_fragmented_monte.rs"
+
+[[test]]
+name = "nist_sha512"
+path = "tests/sha512_tests/nist_sha512.rs"
+
+[[test]]
+name = "nist_sha512_monte"
+path = "tests/sha512_tests/nist_sha512_monte.rs"
+
+[[test]]
+name = "sha512_fragmented_monte"
+path = "tests/sha512_tests/sha512_fragmented_monte.rs"
