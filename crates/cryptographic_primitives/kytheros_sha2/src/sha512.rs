@@ -1,29 +1,30 @@
-//! SHA-512 logical word functions from [NIST FIPS 180-4 (August 2015)][fips],
-//! §4.1.3, equations (4.8)–(4.13).
+//! SHA-512 components from [NIST FIPS 180-4 (August 2015)][fips].
 //!
-//! The module exposes six stateless, allocation-free functions in safe Rust
-//! for use in `no_std` environments. The API takes numeric 64-bit words by
-//! value, with the most significant bit at the left (§3.1). It operates
-//! independently of host byte order and performs no serialization.
+//! The module exposes six logical word functions from §4.1.3,
+//! equations (4.8)–(4.13). These functions are stateless and allocation-free
+//! in safe Rust for use in `no_std` environments. The API takes numeric
+//! 64-bit words by value with the most significant bit at the left (§3.1).
+//! It operates independently of host byte order and performs no
+//! serialization.
+//!
+//! Internal components implement the round constants (§4.2.3), message
+//! schedule and single-block compression (§6.4.2) for a future context.
 //!
 //! The examples are locally calculated illustrations. Unit tests check
 //! Boolean behavior, sigma bit positions and sampled algebraic properties.
 //!
 //! [fips]: https://doi.org/10.6028/NIST.FIPS.180-4
 
-mod constants;
-mod logical;
-
-// The schedule has no production caller until compression is implemented.
-// Unit tests exercise the schedule directly, so no exception is needed
-// when compiling the test configuration.
 #[cfg_attr(
     not(test),
     expect(
         dead_code,
-        reason = "SHA-512 compression will consume this schedule"
+        reason = "SHA-512 context will consume this compression module"
     )
 )]
+mod compression;
+mod constants;
+mod logical;
 mod schedule;
 
 pub use logical::{

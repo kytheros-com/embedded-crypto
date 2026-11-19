@@ -14,7 +14,6 @@
 //! [fips]: https://doi.org/10.6028/NIST.FIPS.180-4
 
 /// Published 64-bit round words indexed by round number.
-#[expect(dead_code, reason = "SHA-512 compression will consume this table")]
 pub(super) const SHA_512_ROUND_CONSTANTS: [u64; 80] = [
     0x428a2f98d728ae22,
     0x7137449123ef65cd,
