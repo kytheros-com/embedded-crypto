@@ -1,0 +1,104 @@
+{
+  "algorithm": "SHA-512",
+  "origin": "Repository-retained archives supplied for SHA-256 verification in November 2026. No new download. Original download date and independent source authentication are unknown.",
+  "integrity_limit": "Checksums and byte equality establish local byte identity only.",
+  "readme_interpretation": "Each original Readme.txt describes .rsp format, tab-indented i/M/MDi for i=3..7, and a final unindented MD per COUNT at i=1002. The README does not specify partial-byte storage.",
+  "archives": [
+    {
+      "filename": "shabittestvectors.zip",
+      "repository_path": "tests/NIST_KAT_Files/shabittestvectors.zip",
+      "url": "https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/shs/shabittestvectors.zip",
+      "sha256": "cd7b9f11680c6e0ccdbe13b28403f2017b5ff48789152162461e0a24fb4c5d45",
+      "files": [
+        {
+          "path": "shabittestvectors/Readme.txt",
+          "sha256": "24bf370543f9521f7eb44f49e8d489ac9e45a21126f883d8e32e7fffd1d10227",
+          "cases": null,
+          "intermediate_pairs": 0,
+          "crlf": 16,
+          "isolated_lf": 0
+        },
+        {
+          "path": "shabittestvectors/SHA512ShortMsg.rsp",
+          "sha256": "673f602e0384ff3fd599b451d9ad38148871c7e5af26f08ad8a4faaa43675008",
+          "cases": 1025,
+          "intermediate_pairs": 0,
+          "crlf": 4107,
+          "isolated_lf": 0
+        },
+        {
+          "path": "shabittestvectors/SHA512LongMsg.rsp",
+          "sha256": "142bbb9aedecc6ae1bec49d43d2c8d2d306516b75824446892cc299df445cab0",
+          "cases": 1024,
+          "intermediate_pairs": 0,
+          "crlf": 4103,
+          "isolated_lf": 0
+        },
+        {
+          "path": "shabittestvectors/SHA512Monte.rsp",
+          "sha256": "2ba6e3d0e38050c2ec9f5a4e51b0b798d932b0a768b46a7b6bada3fcd71458cc",
+          "cases": 100,
+          "intermediate_pairs": 0,
+          "crlf": 309,
+          "isolated_lf": 0
+        },
+        {
+          "path": "shabittestvectors/SHA512Monte.txt",
+          "sha256": "be8745c694ef5a2dd5b4bf0af6e67614ade5070960057c8b30c84cc552b7fccc",
+          "cases": 100,
+          "intermediate_pairs": 500,
+          "crlf": 2209,
+          "isolated_lf": 0
+        }
+      ]
+    },
+    {
+      "filename": "shabytetestvectors.zip",
+      "repository_path": "tests/NIST_KAT_Files/shabytetestvectors.zip",
+      "url": "https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/shs/shabytetestvectors.zip",
+      "sha256": "929ef80b7b3418aca026643f6f248815913b60e01741a44bba9e118067f4c9b8",
+      "files": [
+        {
+          "path": "shabytetestvectors/Readme.txt",
+          "sha256": "24bf370543f9521f7eb44f49e8d489ac9e45a21126f883d8e32e7fffd1d10227",
+          "cases": null,
+          "intermediate_pairs": 0,
+          "crlf": 16,
+          "isolated_lf": 0
+        },
+        {
+          "path": "shabytetestvectors/SHA512ShortMsg.rsp",
+          "sha256": "e53a36c03609e5a3e3cc4b6e117a499db7864c23ec825c6cec99503a45f40764",
+          "cases": 129,
+          "intermediate_pairs": 0,
+          "crlf": 523,
+          "isolated_lf": 0
+        },
+        {
+          "path": "shabytetestvectors/SHA512LongMsg.rsp",
+          "sha256": "b1f3f05d5c209777954d49521d7ea1349447c36a0c52849e044bc397a27dd410",
+          "cases": 128,
+          "intermediate_pairs": 0,
+          "crlf": 519,
+          "isolated_lf": 0
+        },
+        {
+          "path": "shabytetestvectors/SHA512Monte.rsp",
+          "sha256": "8ca78659286c2f01667a98fc7accd32fc171ae7b24ac00f1a8ce6b77770247fa",
+          "cases": 100,
+          "intermediate_pairs": 0,
+          "crlf": 309,
+          "isolated_lf": 0
+        },
+        {
+          "path": "shabytetestvectors/SHA512Monte.txt",
+          "sha256": "9ff88180277283b7446e0b041398c653cb1084fc8ad22891c8827562166cb7b1",
+          "cases": 100,
+          "intermediate_pairs": 500,
+          "crlf": 2209,
+          "isolated_lf": 0
+        }
+      ]
+    }
+  ]
+}

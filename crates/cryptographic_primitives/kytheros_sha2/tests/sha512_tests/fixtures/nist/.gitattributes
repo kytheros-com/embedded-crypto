@@ -1,0 +1,4 @@
+# Preserve the exact archive member bytes, including original CRLF.
+*.rsp -text
+Readme.txt -text
+SHA512Monte.txt -text
