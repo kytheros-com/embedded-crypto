@@ -1,0 +1,85 @@
+[36m[01m      -------------------------------------------------------------------
+[39;49m[0m[36m[01m                        STM32CubeProgrammer v2.24.0                  
+[39;49m[0m[36m[01m      -------------------------------------------------------------------
+
+[39;49m[0m[90mST-LINK SN  : 003800353335511835383531
+[39;49m[0m[90mST-LINK FW  : V3J10M3
+[39;49m[0m[90mBoard       : NUCLEO-U5A5ZJ-Q
+[39;49m[0m[90mVoltage     : 3.27V
+[39;49m[0m[90mSWD freq    : 8000 KHz
+[39;49m[0m[90mConnect mode: Hot Plug
+[39;49m[0m[90mReset mode  : Software reset
+[39;49m[0m[90mDevice ID   : 0x481
+[39;49m[0m[90mRevision ID : Rev X
+[39;49m[0m[39;49mDevice name : STM32U5xx
+[39;49m[0m[39;49mNVM size    : 4 MBytes
+[39;49m[0m[39;49mDevice type : MCU
+[39;49m[0m[39;49mDevice CPU  : Cortex-M33
+[39;49m[0m[39;49mBL Version  : 0x92
+[39;49m[0m[39;49mDebug in Low Power mode enabled
+[39;49m[0m[39;49m
+[39;49m[0m[39;49m
+[39;49m[0m[39;49mUPLOADING OPTION BYTES DATA ...
+[39;49m[0m[39;49m
+[39;49m[0m[39;49m  Bank          : 0x00
+[39;49m[0m[39;49m  Address       : 0x40022040 
+[39;49m[0m[39;49m  Size          : 48 Bytes
+[39;49m[0m[39;49m
+[39;49m[0m[00;32m[==================================================] 100% [39;49m[39;49m
+[39;49m[0m[39;49m
+[39;49m[0m[39;49m
+[39;49m[0m[39;49mOPTION BYTES BANK: 0
+[39;49m[0m[39;49m
+[39;49m[0m[39;49m   Read Out Protection:
+[39;49m[0m[39;49m
+[39;49m[0m[39;49m     RDP          : 0xAA (Level 0, no protection) 
+[39;49m[0m[39;49m
+[39;49m[0m[39;49m   BOR Level:
+[39;49m[0m[39;49m
+[39;49m[0m[39;49m     BOR_LEV      : 0x0 (BOR Level 0, reset level threshold is around 1.7 V) 
+[39;49m[0m[39;49m
+[39;49m[0m[39;49m   User Configuration:
+[39;49m[0m[39;49m
+[39;49m[0m[39;49m     TZEN         : 0x0 (Global TrustZone security disabled) 
+[39;49m[0m[39;49m     nRST_STOP    : 0x1 (No reset generated when entering Stop mode) 
+[39;49m[0m[39;49m     nRST_STDBY   : 0x1 (No reset generated when entering Standby mode) 
+[39;49m[0m[39;49m     nRST_SHDW    : 0x1 (No reset generated when entering the Shutdown mode) 
+[39;49m[0m[39;49m     SRAM_RST     : 0x1 (SRAM1, SRAM3 and SRAM4 not erased when a system reset occurs) 
+[39;49m[0m[39;49m     IWDG_SW      : 0x1 (Software independent watchdog) 
+[39;49m[0m[39;49m     IWDG_STOP    : 0x1 (IWDG counter active in stop mode) 
+[39;49m[0m[39;49m     IWDG_STDBY   : 0x1 (IWDG counter active in standby mode) 
+[39;49m[0m[39;49m     WWDG_SW      : 0x1 (Software window watchdog) 
+[39;49m[0m[39;49m     SWAP_BANK    : 0x0 (Bank 1 and bank 2 address are not swapped) 
+[39;49m[0m[39;49m     BKPRAM_ECC   : 0x1 (Backup RAM ECC check disabled) 
+[39;49m[0m[39;49m     SRAM3_ECC    : 0x1 (SRAM3 ECC check disabled) 
+[39;49m[0m[39;49m     SRAM2_ECC    : 0x1 (SRAM2 ECC check disabled) 
+[39;49m[0m[39;49m     SRAM2_RST    : 0x1 (SRAM2 is not erased when a system reset occurs) 
+[39;49m[0m[39;49m     nSWBOOT0     : 0x1 (BOOT0 taken from PH3/BOOT0 pin) 
+[39;49m[0m[39;49m     nBOOT0       : 0x1 (nBOOT0 = 1) 
+[39;49m[0m[39;49m     PA15_PUPEN   : 0x1 (USB power delivery dead-battery disabled/ TDI pull-up activated) 
+[39;49m[0m[39;49m     IO_VDD_HSLV  : 0x0 (High-speed IO at low VDD voltage feature disabled (VDD can exceed 2.5 V)) 
+[39;49m[0m[39;49m     IO_VDDIO2_HSLV: 0x0 (High-speed IO at low VDDIO2 voltage feature disabled (VDDIO2 can exceed 2.5 V)) 
+[39;49m[0m[39;49m
+[39;49m[0m[39;49m   Boot Configuration:
+[39;49m[0m[39;49m
+[39;49m[0m[39;49m     NSBOOTADD0   : 0x100000  (0x8000000) 
+[39;49m[0m[39;49m     NSBOOTADD1   : 0x17F200  (0xBF90000) 
+[39;49m[0m[39;49m
+[39;49m[0m[39;49m   Write Protection 1:
+[39;49m[0m[39;49m
+[39;49m[0m[39;49m     WRP1A_PSTRT  : 0xFF  (0x81FE000) 
+[39;49m[0m[39;49m     WRP1A_PEND   : 0x0  (0x8000000) 
+[39;49m[0m[39;49m     UNLOCK_1A    : 0x1 (WRP1A start and end pages unlocked) 
+[39;49m[0m[39;49m     WRP1B_PSTRT  : 0xFF  (0x81FE000) 
+[39;49m[0m[39;49m     WRP1B_PEND   : 0x0  (0x8000000) 
+[39;49m[0m[39;49m     UNLOCK_1B    : 0x1 (WRP1B start and end pages unlocked) 
+[39;49m[0m[39;49m
+[39;49m[0m[39;49m   Write Protection 2:
+[39;49m[0m[39;49m
+[39;49m[0m[39;49m     WRP2A_PSTRT  : 0xFF  (0x83FE000) 
+[39;49m[0m[39;49m     WRP2A_PEND   : 0x0  (0x8200000) 
+[39;49m[0m[39;49m     UNLOCK_2A    : 0x1 (WRP2A start and end pages unlocked) 
+[39;49m[0m[39;49m     WRP2B_PSTRT  : 0xFF  (0x83FE000) 
+[39;49m[0m[39;49m     WRP2B_PEND   : 0x0  (0x8200000) 
+[39;49m[0m[39;49m     UNLOCK_2B    : 0x1 (WRP2B start and end pages unlocked) 
+[39;49m[0m
