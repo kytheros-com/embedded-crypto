@@ -121,13 +121,18 @@ Any future option-byte modification requires a documented assessment of reversib
 | MCU device identification | PASS |
 | Silicon revision identification | PASS |
 | Original option-byte capture | PASS |
-| Target Flash programming | Not attempted |
-| Target firmware execution under our control | Not attempted |
+| Target Flash programming | PASS |
+| Target firmware execution under our control | PASS |
 | Runtime memory-protection testing | Not attempted |
 | DMA isolation testing | Not attempted |
 | TrustZone activation | Not attempted |
 
 The PASS results above refer only to the observed initial bring-up operations. They do not imply general hardware reliability or security validation.
+
+### Hardware validation records
+
+- [2026-11-21 — Initial firmware deployment](records/2026-11-21-initial-firmware-deployment.md)
+- git rev-parse HEAD => 70e145e9b0b7e760a594e5240863b6a52a6bcdba
 
 ## 7. Next Steps
 
