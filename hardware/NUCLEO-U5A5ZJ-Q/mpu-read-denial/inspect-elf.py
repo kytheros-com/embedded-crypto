@@ -6,7 +6,20 @@ import hashlib
 from pathlib import Path
 import struct
 import subprocess
+import shutil
 
+def find_binutils_tool(name):
+    """Locate a GNU binutils tool, preferring the ARM cross-toolchain."""
+    candidates = (f"arm-none-eabi-{name}", name)
+
+    for candidate in candidates:
+        executable = shutil.which(candidate)
+        if executable is not None:
+            return executable
+
+    raise SystemExit(
+        f"Cannot find {name}. Tried: {', '.join(candidates)}"
+    )
 
 def require(condition, message):
     if not condition:
@@ -46,7 +59,7 @@ def inspect(path):
 
     symbols = {}
     for line in subprocess.check_output(
-        ["readelf", "-sW", str(path)], text=True
+        [find_binutils_tool("readelf"), "-sW", str(path)], text=True
     ).splitlines():
         fields = line.split()
         if len(fields) == 8 and fields[0].rstrip(":").isdigit():
