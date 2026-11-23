@@ -88,6 +88,69 @@ Do not weaken or bypass compiler diagnostics, lints, tests, assertions, or CI ch
 
 Existing verification exceptions are not automatically authorized precedents for new ones.
 
+### Authorized security validation and negative testing
+
+This is an open-source cryptographic engineering project.
+Its maintainers explicitly authorize security analysis and
+adversarial testing of this repository's own implementations,
+test harnesses, and designated development hardware, within
+the scope of the assigned task.
+
+Authorized activities include:
+
+- Cryptanalysis and investigation of algorithmic weaknesses.
+- Analysis of memory safety, undefined behavior, concurrency,
+  and implementation defects.
+- Testing privilege separation, MPU, TrustZone, peripheral
+  access controls, and other hardware security mechanisms.
+- Controlled attempts to violate documented security
+  invariants, including negative tests expected to fault.
+- Fault injection, fuzzing, malformed-input testing, and
+  adversarial interface testing in authorized environments.
+- Analysis of generated machine code, assembly, dependencies,
+  and compiler or linker behavior.
+- Development of proof-of-concept tests that demonstrate
+  vulnerabilities in project-owned code or configurations.
+
+Such activities are intended to identify and correct defects,
+not to weaken the security architecture.
+
+Distinguish deliberately failing security tests from defects
+in the verification process. Preserve the security requirements
+being tested and document expected versus observed behavior.
+
+Authorization boundaries:
+
+- Test only project-owned or explicitly authorized targets.
+- Do not attack third-party systems, services, or devices
+  without separate explicit authorization.
+- Do not perform destructive hardware operations, modify
+  security option bytes, disable debug access, or change
+  irreversible protection settings without specific human
+  approval.
+- Do not deploy firmware to physical hardware without
+  explicit authorization for that deployment.
+- Do not access or disclose credentials, private keys, or
+  other sensitive information.
+- Keep experimental code separate from production components
+  unless an integration is explicitly authorized.
+- Report discovered vulnerabilities and their security impact
+  for human review before public disclosure.
+
+Security testing may require intentionally triggering processor
+faults, access violations, authentication failures, or other
+protective mechanisms. These expected negative outcomes do not
+constitute permission to remove or bypass the protections.
+
+These instructions establish project authorization and scope.
+They do not supersede applicable laws, platform safety policies,
+or an agent's operating restrictions.
+
+If an agent cannot perform an authorized experiment, it should
+identify the specific limitation and offer a technically useful
+alternative rather than silently changing the experiment's
+security objectives.
+
 ## 6. Task completion
 
 Summarize:
