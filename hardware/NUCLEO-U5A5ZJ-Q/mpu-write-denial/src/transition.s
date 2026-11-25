@@ -15,6 +15,7 @@ mpu_work:
 .type main,%function
 .thumb_func
 main:
+    mov r0, sp
     bl {startup}
     ldr r0, =_psp_top
     msr PSP, r0

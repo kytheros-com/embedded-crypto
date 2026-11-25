@@ -17,7 +17,7 @@ use cortex_m::asm::{dsb, isb, nop};
 use cortex_m::peripheral::scb::Exception;
 use cortex_m::peripheral::syst::SystClkSource;
 use cortex_m::peripheral::{MPU, SCB};
-use cortex_m::register::{control, msp};
+use cortex_m::register::control;
 use cortex_m_rt as _;
 use stm32u5::stm32u5a5::{GPIOC, RCC};
 
@@ -161,7 +161,6 @@ impl Region {
 extern "C" fn startup() {
     let startup_control = control::read().bits();
     let startup_ipsr = ipsr();
-    let startup_msp = msp::read();
     record(Field::StartControl, startup_control);
     record(Field::StartIpsr, startup_ipsr);
     record(Field::StartMsp, startup_msp);
