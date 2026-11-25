@@ -124,31 +124,42 @@ isolation. The privilege/SVCall experiment does not establish a secure SVC
 authorization boundary. The board's original option bytes are observations,
 not proof of later runtime protection settings.
 
-## Implemented child experiment awaiting hardware execution
+## Completed child experiment
 
 | ID | Family | Status | Scope and evidence |
 |---|---|---|---|
-| `FLT-01-001` | `FLT-01` | `IMPLEMENTED` | One unprivileged `UDF #0x42` UsageFault probe. [Procedure and static verification](2026-11-25-cortex-m33-usagefault-undefined-instruction-procedure.md); [standalone source](usagefault-undefined-instruction/). No board execution or hardware result exists. |
+| `FLT-01-001` | `FLT-01` | `PASS` | On 2026-11-25, two physical hardware-reset executions produced identical 55-word observations and the expected five-flash LD1 indication. Unprivileged `UDF #0x42` entered UsageFault (IPSR 6) with `CFSR=0x00010000` (`UNDEFINSTR` only), `HFSR=0`, and stacked PC at the labeled UDF. [Procedure](2026-11-25-cortex-m33-usagefault-undefined-instruction-procedure.md); [source](usagefault-undefined-instruction/); [hardware evidence](records/2026-11-25-cortex-m33-usagefault-undefined-instruction.md). |
 
-The documented static build and ELF inspection passed. The new
-target-specific `unsafe` blocks require human design review under
-`AGENTS.md` before the experiment is marked `READY`. Independent
-macOS reproduction, human deployment approval, two board executions,
-and a hardware evidence record remain outstanding. No family-wide
-fault classification or containment conclusion follows from static
-verification.
+The completed [evidence record](records/2026-11-25-cortex-m33-usagefault-undefined-instruction.md)
+identifies committed source revision
+`0f6f122dc9c64161a10e05b1af2656f443c64f94`. All seven reported
+source-file hashes match that commit. The independent macOS Flash
+payload and programming image each match the Linux reference: 2,736
+bytes, SHA-256
+`c8dbcc5ce07e86504f522cde0463f45abb7b9b82a3cf55c24cb50375b603f34d`.
+The 2,736-byte physical Flash read-back has the same hash and passed a
+byte-for-byte comparison with the programming image. The macOS and
+Linux ELF files differ; complete ELF reproducibility is not claimed.
+The full macOS build/programming transcript and individual hardware
+execution timestamps were not supplied. The `PASS` status applies to
+the documented hardware acceptance criteria, not to completion of human
+design review of the target-specific `unsafe` code. That review's
+outcome was not supplied. The result establishes neither family-wide
+fault classification nor comprehensive containment or recovery.
 
 ## Preliminary experiment families
 
 Every row below describes preliminary coverage. `PARTIAL` marks only a
-related, limited historical observation. `FLT-01-001` is registered
-above but has no board result. No family is complete, and applicability
-remains to be established during planning. The linked historical IDs
-are cross-references, not substitute acceptance results for a family.
+related, limited historical observation or completed child experiment.
+`FLT-01-001` has a board result, but other UsageFault causes remain
+untested. No family is complete, and applicability of future proposed
+experiments remains to be established during planning. The linked
+historical IDs are cross-references, not substitute acceptance results
+for a family.
 
 | Family | Investigation | Coverage and related evidence |
 |---|---|---|
-| `FLT-01` | UsageFault classification | `PARTIAL` implementation coverage: `FLT-01-001` is `IMPLEMENTED`; no hardware execution. Other UsageFault causes remain planned. |
+| `FLT-01` | UsageFault classification | `PARTIAL` hardware coverage: `FLT-01-001` passed for one unprivileged undefined instruction. Other UsageFault causes, execution domains, containment, and recovery remain untested. |
 | `FLT-02` | MemManage classification and execution-domain attribution | `PARTIAL`: `HW-003`–`HW-005` classified selected unprivileged access faults; no general attribution or recovery. |
 | `FLT-03` | BusFault classification, including precise and imprecise faults where supported | Planned; applicability of each fault mode to be checked. |
 | `FLT-04` | Fault escalation to HardFault | Planned; `HW-003`–`HW-005` observed no escalation for their selected faults. |
