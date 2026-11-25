@@ -158,7 +158,7 @@ impl Region {
 }
 
 /// Called once in privileged Thread mode. Returns on MSP before handoff.
-extern "C" fn startup() {
+extern "C" fn startup(startup_msp: u32) {
     let startup_control = control::read().bits();
     let startup_ipsr = ipsr();
     record(Field::StartControl, startup_control);
