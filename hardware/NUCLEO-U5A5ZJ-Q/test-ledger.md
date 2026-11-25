@@ -124,17 +124,31 @@ isolation. The privilege/SVCall experiment does not establish a secure SVC
 authorization boundary. The board's original option bytes are observations,
 not proof of later runtime protection settings.
 
+## Implemented child experiment awaiting hardware execution
+
+| ID | Family | Status | Scope and evidence |
+|---|---|---|---|
+| `FLT-01-001` | `FLT-01` | `IMPLEMENTED` | One unprivileged `UDF #0x42` UsageFault probe. [Procedure and static verification](2026-11-25-cortex-m33-usagefault-undefined-instruction-procedure.md); [standalone source](usagefault-undefined-instruction/). No board execution or hardware result exists. |
+
+The documented static build and ELF inspection passed. The new
+target-specific `unsafe` blocks require human design review under
+`AGENTS.md` before the experiment is marked `READY`. Independent
+macOS reproduction, human deployment approval, two board executions,
+and a hardware evidence record remain outstanding. No family-wide
+fault classification or containment conclusion follows from static
+verification.
+
 ## Preliminary experiment families
 
-Every row below is `PLANNED` coverage. `PARTIAL` marks only a related,
-limited historical observation. No child experiment is registered, no
-family is complete, and applicability remains to be established during
-planning. The linked historical IDs are cross-references, not substitute
-acceptance results for the family.
+Every row below describes preliminary coverage. `PARTIAL` marks only a
+related, limited historical observation. `FLT-01-001` is registered
+above but has no board result. No family is complete, and applicability
+remains to be established during planning. The linked historical IDs
+are cross-references, not substitute acceptance results for a family.
 
 | Family | Investigation | Coverage and related evidence |
 |---|---|---|
-| `FLT-01` | UsageFault classification | Planned; none. |
+| `FLT-01` | UsageFault classification | `PARTIAL` implementation coverage: `FLT-01-001` is `IMPLEMENTED`; no hardware execution. Other UsageFault causes remain planned. |
 | `FLT-02` | MemManage classification and execution-domain attribution | `PARTIAL`: `HW-003`–`HW-005` classified selected unprivileged access faults; no general attribution or recovery. |
 | `FLT-03` | BusFault classification, including precise and imprecise faults where supported | Planned; applicability of each fault mode to be checked. |
 | `FLT-04` | Fault escalation to HardFault | Planned; `HW-003`–`HW-005` observed no escalation for their selected faults. |
