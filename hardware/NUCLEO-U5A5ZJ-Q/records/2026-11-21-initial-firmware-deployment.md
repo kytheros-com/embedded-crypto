@@ -159,6 +159,6 @@ The result provides preliminary evidence useful for developing future firmware p
 
 No cryptographic functionality or security isolation claims are established by this test.
 
-Future work will expand hardware testing toward the Platform Isolation Layer (PIL), including privilege transitions, memory protection, interrupt control, and DMA isolation.
+Future work will expand hardware testing toward the Platform Integration Layer (PIL), including privilege transitions, memory protection, interrupt control, and DMA isolation.
 
 **Overall result: PASS — Initial firmware deployment and execution verified.**

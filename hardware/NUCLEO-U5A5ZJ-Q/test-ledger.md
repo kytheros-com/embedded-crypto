@@ -9,7 +9,7 @@
 ## Purpose and authority
 
 This ledger indexes small, independently reviewable experiments for the
-Platform Isolation Layer (PIL). Detailed procedures, raw observations,
+Platform Integration Layer (PIL). Detailed procedures, raw observations,
 diagnostic decodes, and image hashes remain in the linked records. The
 [board inventory](README.md) records the observed hardware and original
 option bytes; the [architecture](../../docs/assurance/architecture.md)
