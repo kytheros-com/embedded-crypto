@@ -124,11 +124,12 @@ isolation. The privilege/SVCall experiment does not establish a secure SVC
 authorization boundary. The board's original option bytes are observations,
 not proof of later runtime protection settings.
 
-## Completed child experiment
+## Child experiments
 
 | ID | Family | Status | Scope and evidence |
 |---|---|---|---|
 | `FLT-01-001` | `FLT-01` | `PASS` | On 2026-11-25, two physical hardware-reset executions produced identical 55-word observations and the expected five-flash LD1 indication. Unprivileged `UDF #0x42` entered UsageFault (IPSR 6) with `CFSR=0x00010000` (`UNDEFINSTR` only), `HFSR=0`, and stacked PC at the labeled UDF. [Procedure](2026-11-25-cortex-m33-usagefault-undefined-instruction-procedure.md); [source](usagefault-undefined-instruction/); [hardware evidence](records/2026-11-25-cortex-m33-usagefault-undefined-instruction.md). |
+| `FLT-01-002` | `FLT-01` | `IMPLEMENTED` | Standalone privileged Thread-mode PSP `UDF #0x42` comparison with FLT-01-001. Linux static build and ELF inspection passed; target-specific `unsafe` review, macOS reproduction, and authorized board execution remain pending. No hardware result exists. [Procedure](2026-11-26-cortex-m33-usagefault-undefined-instruction-privileged-procedure.md); [source](usagefault-undefined-instruction-privileged/). |
 
 The completed [evidence record](records/2026-11-25-cortex-m33-usagefault-undefined-instruction.md)
 identifies committed source revision
@@ -151,15 +152,16 @@ fault classification nor comprehensive containment or recovery.
 
 Every row below describes preliminary coverage. `PARTIAL` marks only a
 related, limited historical observation or completed child experiment.
-`FLT-01-001` has a board result, but other UsageFault causes remain
-untested. No family is complete, and applicability of future proposed
+`FLT-01-001` has a board result; `FLT-01-002` has only static results.
+Other UsageFault causes remain untested. No family is complete, and
+applicability of future proposed
 experiments remains to be established during planning. The linked
 historical IDs are cross-references, not substitute acceptance results
 for a family.
 
 | Family | Investigation | Coverage and related evidence |
 |---|---|---|
-| `FLT-01` | UsageFault classification | `PARTIAL` hardware coverage: `FLT-01-001` passed for one unprivileged undefined instruction. Other UsageFault causes, execution domains, containment, and recovery remain untested. |
+| `FLT-01` | UsageFault classification | `PARTIAL` hardware coverage: `FLT-01-001` passed for one unprivileged undefined instruction; `FLT-01-002` awaits review and hardware execution for privileged Thread mode. Other UsageFault causes, execution domains, containment, and recovery remain untested. |
 | `FLT-02` | MemManage classification and execution-domain attribution | `PARTIAL`: `HW-003`–`HW-005` classified selected unprivileged access faults; no general attribution or recovery. |
 | `FLT-03` | BusFault classification, including precise and imprecise faults where supported | Planned; applicability of each fault mode to be checked. |
 | `FLT-04` | Fault escalation to HardFault | Planned; `HW-003`–`HW-005` observed no escalation for their selected faults. |
