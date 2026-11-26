@@ -27,18 +27,21 @@ Documents consulted for this procedure:
   issue 0100-01](https://documentation-service.arm.com/static/64c7832738511951cb7a246e),
   §§2.2, 2.6–2.7, 3.1.4, 4.3.3: exception entry, basic frame,
   EXC_RETURN, UNDEFINSTR, and inactive FP context.
-- [ST PM0264 Rev 8](https://www.st.com/resource/en/programming_manual/pm0264-stm32-cortexm33-mcus-programming-manual-stmicroelectronics.pdf),
-  §§2.4.7, 4.3.11–4.3.13, as cited by FLT-01-001: exception and fault
-  register descriptions. The PDF was too large for direct retrieval in
-  this session; section content is inherited from the reviewed baseline
-  and needs independent human confirmation.
-- [ST RM0456 Rev 6](https://www.st.com/resource/en/reference_manual/rm0456-stm32u5-series-armbased-32bit-mcus-stmicroelectronics.pdf),
-  §§2.3.2–2.3.3, 3.5, as cited by FLT-01-001: memory and security
-  configuration. The PDF was too large for direct retrieval here; the
-  revision and sections need independent human confirmation.
-- [ST ES0553 Rev 6, July 2026](https://www.st.com/content/st_com/en/technical-documents/es0553-stm32u59xxx-and-stm32u5axxx-device-errata-stmicroelectronics.html),
-  device summary and Core errata. The listed access-permission versus
-  unaligned-device-fault priority issue does not exercise this UDF path.
+- [ST PM0264 Rev 8, March 2026](https://www.st.com/resource/en/programming_manual/pm0264-stm32-cortexm33-mcus-programming-manual-stmicroelectronics.pdf),
+  local PDF §§2.1.3.8, 2.4.7.1–2.4.7.2, 4.3.11–4.3.13: CONTROL,
+  required ISB after stack selection, exception entry, SHCSR, CFSR,
+  UFSR and HFSR. The local PDF confirms the cited revision and content.
+- [ST RM0456 Rev 7, March 2026](https://www.st.com/resource/en/reference_manual/rm0456-stm32u5-series-armbased-32bit-mcus-stmicroelectronics.pdf),
+  local PDF §§2.3.2–2.3.3, 3.5.6: STM32U59x/U5Ax memory map,
+  SRAM1 and TZEN configuration. FLT-01-001 cited Rev 6; this newer
+  local revision confirms the relevant ranges and TZEN behavior.
+- [ST ES0553 Rev 6, June 2026](https://www.st.com/content/st_com/en/technical-documents/es0553-stm32u59xxx-and-stm32u5axxx-device-errata-stmicroelectronics.html),
+  local PDF device summary, Table 2, and §§2.1–2.1.1. It lists
+  STM32U5A5ZJ revision X and the access-permission versus unaligned
+  device-memory fault priority issue, which does not exercise this UDF
+  path. ST's HTML page labels Rev 6 as July 2026; the supplied PDF
+  itself says June 2026. This publication-date discrepancy needs
+  document-control review.
 - [FIRMWARE.md](FIRMWARE.md), reset MSIS clock assumption and board
   pin/timer setup; [board README](README.md), recovery policy.
 
@@ -56,6 +59,17 @@ ES0553's Core section points to a Cortex-M33 r0p4 reference, while the
 consulted generic guide is r1p0. Applicability of that guide's revision
 to this device requires human confirmation; the previous experiment's
 hardware result corroborates the shared exception behavior on this board.
+The local ST manuals agree with the expected CONTROL, PSP, exception
+frame and UNDEFINSTR interpretation; they do not resolve the r0p4/r1p0
+document-revision difference.
+
+The locally supplied PDFs are ignored by Git. Their SHA-256 digests
+identify the exact copies consulted: PM0264
+`6e42f26331c28aab3ef88d4a271c9e596b10090a594ebc2011edd1a265e50903`,
+RM0456
+`6edaaaae0c5d57c58ffc3a576d44e7b62e8d9cd0e495e8f61bab688226fc327c`,
+and ES0553
+`57670b5a1bb398388515909b0a22f54a08c17923d02dbf11206e39bc89e5ee26`.
 
 ## Configuration and diagnostics
 
@@ -182,8 +196,9 @@ compare payload and programming image bytes and hashes.
 
 Rust 1.98.1, Cargo 1.98.1, Python 3.12.3, and GNU Arm binutils
 2.42 were observed. Repository HEAD was
-`08a7fb1b9fe5faac27150e4a6bcc11262550f165`, with this new
-source and procedure uncommitted. `cargo fmt`,
+`08a7fb1b9fe5faac27150e4a6bcc11262550f165`; at that build the
+new source and procedure were uncommitted. They were subsequently
+committed as `03e8992`. `cargo fmt`,
 target release `check`, Clippy with `-D warnings`, release build,
 rustdoc broken-link check, and ELF inspector passed. The release ELF
 has UsageFault vector `08000309`, UDF `080002F2`, continuation
@@ -200,8 +215,8 @@ the task completion report. These are static observations only.
 | Flash payload | 2,612 | `9222e1b153fa080f94df02721b4eacefe46b332d8fb233cf5244ce3607b60bfd` |
 | Programming image | 2,624 | `adf41ebc0bff0914d28fcb4c48b8daefc4a777d1a093768f9f346d7b0088802f` |
 
-The final 12 programming-image bytes are `FF` padding. The source is
-uncommitted. Source-file SHA-256 digests for this build:
+The final 12 programming-image bytes are `FF` padding. Source-file
+SHA-256 digests for this build:
 
 | File | SHA-256 |
 |---|---|
