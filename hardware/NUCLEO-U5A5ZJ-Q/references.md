@@ -54,9 +54,12 @@ than choosing a convenient interpretation.
 
 The established board baseline is NUCLEO-U5A5ZJ-Q with STM32U5A5ZJ
 revision X, an Arm Cortex-M33 implementing Armv8.0-M with Main
-Extension. The expected processor revision is r0p4, supported by the
-local r0p4 processor guides and the ES0553 core reference but **not yet
-independently confirmed by CPUID on this board**. The Security
+Extension. Cortex-M33 processor revision **r0p4 is independently
+confirmed** by the CPUID=`0x410FD214` SWD read in the
+[FLT-01-002 evidence record](records/2026-11-26-cortex-m33-usagefault-undefined-instruction-privileged.md).
+The field decode is specified by [ARM-TRM, 100230_0004_00_en, r0p4,
+§B2.3, printed p. B2-51]. This processor revision is distinct from
+MCU silicon revision X. The Security
 Extension is implemented by the platform but the current experiment
 configuration disables it (`TZEN=0`). Processor support, option-byte
 state, and firmware activation are different facts. Privilege, PSP,
@@ -332,8 +335,10 @@ need publisher or document-control resolution.
   differing cover/history dates. The workbook summary is navigation,
   not a correctness review of its rules.
 - **Processor applicability:** ARM-DGUI and ARM-TRM are r0p4 editions;
-  ES0553 points to r0p4 core documentation, but target CPUID and
-  AT623/AT624 variant remain to be independently checked. ARM-ARM's
+  ES0553 points to r0p4 core documentation, and FLT-01-002 independently
+  confirmed r0p4 by CPUID. The AT623/AT624 configuration remains to be
+  independently checked. CPUID alone does not establish optional
+  processor features or the current security configuration. ARM-ARM's
   v8.1-M/optional material requires per-feature applicability checks.
 - **URLs:** publisher sites are identified in the documents. Direct
   download URLs, current web availability, and file authenticity were
