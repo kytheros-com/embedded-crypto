@@ -17,59 +17,76 @@ The [ledger](test-ledger.md) records lifecycle, not hardware acceptance.
 
 ## References and interpretation
 
-Documents consulted for this procedure:
+The revision-specific identifiers and SHA-256 digests for the ignored
+local manuals are in the [reference catalogue](references.md). The
+following sections were inspected for this experiment:
 
-- [Arm Cortex-M33 Devices Generic User Guide, 100235_0100_01_en,
-  r1p0, issue 0100-01](https://documentation-service.arm.com/static/5f16e93d20b7cf4bc524af1d),
-  §2.1 CONTROL register (Table 2-16), §3.13.15 UDF. The former defines
-  SPSEL and nPRIV; the latter specifies undefined-instruction UsageFault.
-- [Armv8-M Exception Model User Guide, 107706_0100_01_en, Version 1.0,
-  issue 0100-01](https://documentation-service.arm.com/static/64c7832738511951cb7a246e),
-  §§2.2, 2.6–2.7, 3.1.4, 4.3.3: exception entry, basic frame,
-  EXC_RETURN, UNDEFINSTR, and inactive FP context.
-- [ST PM0264 Rev 8, March 2026](https://www.st.com/resource/en/programming_manual/pm0264-stm32-cortexm33-mcus-programming-manual-stmicroelectronics.pdf),
-  local PDF §§2.1.3.8, 2.4.7.1–2.4.7.2, 4.3.11–4.3.13: CONTROL,
-  required ISB after stack selection, exception entry, SHCSR, CFSR,
-  UFSR and HFSR. The local PDF confirms the cited revision and content.
-- [ST RM0456 Rev 7, March 2026](https://www.st.com/resource/en/reference_manual/rm0456-stm32u5-series-armbased-32bit-mcus-stmicroelectronics.pdf),
-  local PDF §§2.3.2–2.3.3, 3.5.6: STM32U59x/U5Ax memory map,
-  SRAM1 and TZEN configuration. FLT-01-001 cited Rev 6; this newer
-  local revision confirms the relevant ranges and TZEN behavior.
-- [ST ES0553 Rev 6, June 2026](https://www.st.com/content/st_com/en/technical-documents/es0553-stm32u59xxx-and-stm32u5axxx-device-errata-stmicroelectronics.html),
-  local PDF device summary, Table 2, and §§2.1–2.1.1. It lists
-  STM32U5A5ZJ revision X and the access-permission versus unaligned
-  device-memory fault priority issue, which does not exercise this UDF
-  path. ST's HTML page labels Rev 6 as July 2026; the supplied PDF
-  itself says June 2026. This publication-date discrepancy needs
-  document-control review.
-- [FIRMWARE.md](FIRMWARE.md), reset MSIS clock assumption and board
-  pin/timer setup; [board README](README.md), recovery policy.
+- [ARM-ARM, DDI0553B.z, §B3.4, printed p. 73, RGKVQ, RSNGJ,
+  RHVGB, INMBL]: CONTROL access, synchronization and stack selection.
+  [ARM-ARM, DDI0553B.z, CONTROL.SPSEL and CONTROL.nPRIV,
+  §D1.2.13, printed p. 1482]: bit meanings and reset values.
+- [ARM-ARM, DDI0553B.z, §C2.4.259, printed p. 971]: UDF T1
+  encoding `0xDE00 | imm8`, ignored immediate, and `UNDEFINED`
+  operation. For `imm8=0x42`, the halfword is `0xDE42`.
+- [ARM-ARM, DDI0553B.z, §B3.12, printed p. 90, IKJPM;
+  §B3.18, printed pp. 104–105, RWYWW, RQLHB;
+  §B3.19, printed pp. 106–109, RMFPR, RPWWG, RPBVF;
+  §D1.2.96, printed pp. 1628–1629]: UsageFault classification,
+  exception entry, the basic frame, faulting PC and EXC_RETURN.
+- [ARM-TRM, 100230_0004_00_en, r0p4, §A1.9, printed p. A1-29;
+  §B2.1, printed p. B2-44]: r0p4 CPUID `0x410FD214` at
+  `0xE000ED00`. The actual board value remains to be read by SWD.
+- [ARM-DGUI, 100235_0004_00_en, r0p4, §3.12.15,
+  printed p. 3-240]: UDF programming guidance.
+  [ARM-EXCEPTIONS, 107706_0100_01_en, Version 1.0, Issue 01,
+  §§2.6–2.7, printed pp. 25–27]: basic frame and EXC_RETURN.
+- [PM0264, Rev. 8, §2.1.3.8, printed pp. 18–19]: CONTROL and
+  the immediate ISB after changing stack selection.
+  [PM0264, Rev. 8, §§2.4.7.1–2.4.7.2, printed pp. 36–41;
+  §§4.3.11–4.3.12.3, printed pp. 197–203]: frame, EXC_RETURN,
+  SHCSR and CFSR/UFSR fields.
+- [RM0456, Rev. 7, §2.3.2, Figure 5, printed p. 143;
+  §2.3.3, Table 7, printed p. 149]: STM32U59x/U5Ax memory map
+  and SRAM1. [RM0456, Rev. 7, §§3.5.6–3.5.7,
+  printed pp. 168–169]: TZEN configuration and privilege isolation
+  when TrustZone is deactivated.
+- [ARM-ERRATA, SDEN-756493 v14.0, summary printed pp. 10–11,
+  errata 1080541, 1435973, 2219175] and
+  [ES0553, Rev. 6, Table 2 and §2.1.1, printed pp. 2, 5]:
+  revision-X and r0p4 limitations checked for this path. Their
+  stated unaligned Device-memory, interrupt-priority-update and
+  partial VLLDM conditions do not match this controlled UDF probe.
+- [FIRMWARE.md](FIRMWARE.md): reset MSIS clock assumption and LED
+  setup. [Board README](README.md): recovery policy.
 
-Architectural guarantees: Handler mode is privileged and uses MSP;
-`CONTROL.nPRIV` describes Thread-mode privilege. EXC_RETURN bits
-encode interrupted mode, stack selection, security and frame type.
-`UNDEFINSTR` is CFSR bit 16. The exact `0xFFFFFFBC` value, unchanged
-from FLT-01-001, is an expected result for this `TZEN=0`, Thread/PSP,
-non-FP configuration and is corroborated by the previous observation.
-It is not a universal UsageFault value. The expectation `CONTROL=0`
-in Handler mode follows the privileged Thread setting and Handler
-SPSEL clearing. If documentation or hardware contradicts any value,
-retain the discrepancy; do not silently change acceptance criteria.
-ES0553's Core section points to a Cortex-M33 r0p4 reference, while the
-consulted generic guide is r1p0. Applicability of that guide's revision
-to this device requires human confirmation; the previous experiment's
-hardware result corroborates the shared exception behavior on this board.
-The local ST manuals agree with the expected CONTROL, PSP, exception
-frame and UNDEFINSTR interpretation; they do not resolve the r0p4/r1p0
-document-revision difference.
+Architectural guarantees: `CONTROL=2` selects PSP and privileged
+Thread mode; Handler mode remains privileged and uses MSP. Exception
+entry clears CONTROL.SPSEL. UDF generates an undefined-instruction
+UsageFault; `UNDEFINSTR` occupies CFSR bit 16. For a synchronous
+exception, the stacked PC is the faulting instruction, not the next
+instruction. The eight-word basic frame is expected when FPCA is
+clear and stacking succeeds. [ARM-ARM, DDI0553B.z, §B3.8,
+printed p. 78, RTXRW, IDMLS; §B3.18, printed pp. 104–105,
+RWYWW, RQLHB; §B3.19, printed pp. 106–109, RPWWG, RPBVF].
 
-The locally supplied PDFs are ignored by Git. Their SHA-256 digests
-identify the exact copies consulted: PM0264
-`6e42f26331c28aab3ef88d4a271c9e596b10090a594ebc2011edd1a265e50903`,
-RM0456
-`6edaaaae0c5d57c58ffc3a576d44e7b62e8d9cd0e495e8f61bab688226fc327c`,
-and ES0553
-`57670b5a1bb398388515909b0a22f54a08c17923d02dbf11206e39bc89e5ee26`.
+Experimental predictions: startup CONTROL=0, pre-fault CONTROL=2,
+Handler CONTROL=0, PSP frame at `0x20001FE0`, and
+EXC_RETURN=`0xFFFFFFBC` follow this reset, aligned PSP, `TZEN=0`,
+Thread/PSP and inactive-FP configuration. FLT-01-001 previously
+observed the same EXC_RETURN value. The exact value is not universal
+to UsageFault. CPUID=`0x410FD214` is a TRM-based processor-revision
+prediction, pending an independent board read. The probe's stacked
+R0/R1/R2 are controlled copies of pre-fault state, not independent
+fault-register observations or trusted production PIL input.
+
+PM0264 Rev. 8 §2.4.7.1, printed p. 39, broadly calls the stacked
+return address the next instruction. This conflicts with the specific
+ARM-ARM synchronous-exception rule RQLHB; UDF's stacked-PC acceptance
+criterion follows RQLHB. Preserve this wording discrepancy for review.
+The catalogue also records a genuine ES0553 Rev. 6 publication-date
+discrepancy: the local PDF says June 2026, whereas the publisher HTML
+page was labelled July 2026. Neither discrepancy is silently resolved
+by a hardware observation.
 
 ## Configuration and diagnostics
 
@@ -135,6 +152,17 @@ setup, `85` entry/frame, `86` classification/controls, `87`
 unexpected exception, `88` panic. Marker 3 means the positive
 control failed; marker 2 means execution continued past UDF.
 `FrameValid=0` forbids interpreting frame fields.
+`FrameValid=1` means the handler's EXC_RETURN, fault-status, PSP-bound
+and alignment checks permitted inspection of a candidate basic frame.
+It does not mean that the subsequent PC, xPSR, opcode, marker and
+status checks passed or that the experiment was accepted.
+
+The probe's ordinary SRAM store targets the user RW region, which is
+accessible at either privilege level. It verifies an ordinary data
+operation, while pre-fault privilege is indicated by the probe's
+`MRS CONTROL` result in stacked R0 and the inspected transition.
+The direct Handler-mode register reads do not independently recover
+the interrupted Thread-mode nPRIV bit.
 
 Successful checks yield repeating groups of **three green LD1 flashes**.
 The reset MSIS/CPU clock assumption is 4 MHz with unity prescaling.
@@ -249,7 +277,9 @@ seconds, and collect the following exact Hot Plug reads without
 resetting or halting. CLI read lengths are bytes. Repeat the complete
 read sequence after a second independent **physical RESET**. Keep
 both raw 49-word records, sentinel, marker, external SCB reads,
-LED observations, times and any failures separately.
+CPUID, LED observations, times and any failures separately. The
+independent CPUID read is expected to return `0x410FD214` for r0p4;
+retain an unexpected value rather than substituting the prediction.
 
 ```sh
 STM32_Programmer_CLI -c port=SWD mode=HOTPLUG freq=1000 \
@@ -260,6 +290,8 @@ STM32_Programmer_CLI -c port=SWD mode=HOTPLUG freq=1000 \
   -r32 0x20001000 0x08
 STM32_Programmer_CLI -c port=SWD mode=HOTPLUG freq=1000 \
   -r32 0xE000ED24 0x0C
+STM32_Programmer_CLI -c port=SWD mode=HOTPLUG freq=1000 \
+  -r32 0xE000ED00 0x04
 ```
 
 After the second run, use this **consolidated post-deployment evidence
@@ -291,6 +323,8 @@ STM32_Programmer_CLI -c port=SWD mode=HOTPLUG freq=1000 \
   -r32 0x20001000 0x08
 STM32_Programmer_CLI -c port=SWD mode=HOTPLUG freq=1000 \
   -r32 0xE000ED24 0x0C
+STM32_Programmer_CLI -c port=SWD mode=HOTPLUG freq=1000 \
+  -r32 0xE000ED00 0x04
 image_size_in_bytes=$(stat -f '%z' /tmp/flt-01-002-image.bin)
 STM32_Programmer_CLI -c port=SWD mode=HOTPLUG freq=1000 \
   --upload 0x08000000 "$image_size_in_bytes" \
@@ -304,9 +338,13 @@ date -u '+%Y-%m-%dT%H:%M:%SZ'
 Hardware acceptance requires both reset executions to meet all
 controlled fields in the table, including `CONTROL=2` in stacked R0,
 handler CONTROL=0, the inspected UDF PC, Thumb/Thread/no-padding xPSR,
-positive marker 1, continuation 0, unchanged sentinel, and expected
-SCB and mask values. Compare external SCB reads with stored raw
-values. Preserve and explain differences in incidental raw frame
+positive marker 1, continuation 0, unchanged sentinel, expected
+SCB and mask values, and independent CPUID=`0x410FD214`. Require
+the exact active SHCSR=`0x00050008` in the captured record and
+external SWD read. Firmware's internal success check tests only that
+the required SHCSR bits are set; it does not reject extra active or
+pending bits. Compare external SCB reads with stored raw values.
+Preserve and explain differences in incidental raw frame
 values; do not force them to match FLT-01-001 or each other. The
 three-flash LED group corroborates but cannot establish PASS alone.
 Unexpected results are preserved for analysis, not automatically
