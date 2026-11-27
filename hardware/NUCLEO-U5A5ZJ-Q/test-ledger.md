@@ -130,7 +130,7 @@ not proof of later runtime protection settings.
 |---|---|---|---|
 | `FLT-01-001` | `FLT-01` | `PASS` | On 2026-11-25, two physical hardware-reset executions produced identical 55-word observations and the expected five-flash LD1 indication. Unprivileged `UDF #0x42` entered UsageFault (IPSR 6) with `CFSR=0x00010000` (`UNDEFINSTR` only), `HFSR=0`, and stacked PC at the labeled UDF. [Procedure](2026-11-25-cortex-m33-usagefault-undefined-instruction-procedure.md); [source](usagefault-undefined-instruction/); [hardware evidence](records/2026-11-25-cortex-m33-usagefault-undefined-instruction.md). |
 | `FLT-01-002` | `FLT-01` | `PASS` | On 2026-11-26, two physical-reset executions gave identical 56-word observations and the three-flash LD1 pattern. Privileged Thread/PSP `UDF #0x42` entered UsageFault with the predicted basic frame, `CFSR=0x00010000`, and unchanged `EXC_RETURN=0xFFFFFFBC`. Independent CPUID confirmed Cortex-M33 r0p4; physical Flash read-back matched the programming image. [Procedure](2026-11-26-cortex-m33-usagefault-undefined-instruction-privileged-procedure.md); [source](usagefault-undefined-instruction-privileged/); [hardware evidence](records/2026-11-26-cortex-m33-usagefault-undefined-instruction-privileged.md). |
-| `FLT-01-003` | `FLT-01` | `IMPLEMENTED` | Privileged Thread/MSP `UDF #0x42` shared-stack characterization is implemented and statically inspected. Human review and two physical RESET runs remain pending; no hardware PASS is claimed. [Procedure](2026-11-27-cortex-m33-usagefault-undefined-instruction-msp-procedure.md); [source](usagefault-undefined-instruction-msp/). |
+| `FLT-01-003` | `FLT-01` | `PASS` | On 2026-11-27, two physical-reset executions gave identical 64-word observations and the three-flash LD1 pattern. Privileged Thread/MSP `UDF #0x42` entered UsageFault with a basic frame preserved in the shared MSP reserve; eight direct frame words matched the diagnostic copy. `CFSR=0x00010000`, `EXC_RETURN=0xFFFFFFB8`, and physical Flash read-back matched the programming image. [Procedure](2026-11-27-cortex-m33-usagefault-undefined-instruction-msp-procedure.md); [source](usagefault-undefined-instruction-msp/); [hardware evidence](records/2026-11-27-cortex-m33-usagefault-undefined-instruction-msp.md). |
 
 The completed [evidence record](records/2026-11-25-cortex-m33-usagefault-undefined-instruction.md)
 identifies committed source revision
@@ -161,11 +161,25 @@ Separate reset timestamps and instrumental LED timing were not
 collected. The PASS applies to this procedure's acceptance criteria;
 human review remains necessary for any later PIL design use.
 
+`FLT-01-003` has a separate [hardware evidence record](records/2026-11-27-cortex-m33-usagefault-undefined-instruction-msp.md)
+for a clean macOS checkout at committed source
+`2f21a2df76ff17d50c896c98fb4a4b2913996411`. Its seven source
+hashes match the earlier Linux reference build, which was made while
+the implementation was uncommitted; that Linux build is not assigned
+retrospectively to the macOS commit. Both 2,624-byte Flash payloads,
+programming images and the physical Flash read-back have SHA-256
+`ba6ab1858d92fbfc8009a4b7c54610933300c4f60bb64ce77f4ea9a3cd8adce1`
+and passed byte-for-byte comparison. The macOS and Linux ELFs differ;
+no cause is inferred. A fresh read-only option-byte display matched
+the original baseline. Exact reset times, instrumental LED timing,
+and the full macOS build-check transcript were not supplied. PASS is
+limited to this controlled successful exception-entry procedure.
+
 ## Preliminary experiment families
 
 Every row below describes preliminary coverage. `PARTIAL` marks only a
 related, limited historical observation or completed child experiment.
-`FLT-01-001` and `FLT-01-002` have board results. Other UsageFault
+`FLT-01-001` through `FLT-01-003` have board results. Other UsageFault
 causes remain untested. No family is complete, and
 applicability of future proposed
 experiments remains to be established during planning. The linked
@@ -174,12 +188,12 @@ for a family.
 
 | Family | Investigation | Coverage and related evidence |
 |---|---|---|
-| `FLT-01` | UsageFault classification | `PARTIAL` hardware coverage: `FLT-01-001` and `FLT-01-002` passed for unprivileged and privileged Thread-mode PSP execution of the same UDF instruction. Other UsageFault causes, execution domains, containment, and recovery remain untested. |
+| `FLT-01` | UsageFault classification | `PARTIAL` hardware coverage: `FLT-01-001` (unprivileged Thread/PSP), `FLT-01-002` (privileged Thread/PSP), and `FLT-01-003` (privileged Thread/MSP) passed for the same UDF instruction. Other UsageFault causes, execution domains, containment, and recovery remain untested. |
 | `FLT-02` | MemManage classification and execution-domain attribution | `PARTIAL`: `HW-003`–`HW-005` classified selected unprivileged access faults; no general attribution or recovery. |
 | `FLT-03` | BusFault classification, including precise and imprecise faults where supported | Planned; applicability of each fault mode to be checked. |
 | `FLT-04` | Fault escalation to HardFault | Planned; `HW-003`–`HW-005` observed no escalation for their selected faults. |
 | `FLT-05` | Stack-limit violations | Planned; none. |
-| `FLT-06` | Exception stacking and unstacking failures | Planned; `HW-002`–`HW-005` observed ordinary stacking, not failure paths. |
+| `FLT-06` | Exception stacking and unstacking failures | Planned; `HW-002`–`HW-005` and `FLT-01-003` observed ordinary stacking, not failure paths. |
 | `FLT-07` | Faults during interrupt handling, including nested interrupts | Planned; none. |
 | `FLT-08` | Faults during fault handling | Planned; none. |
 | `FLT-09` | Processor lockup and reset recovery | Planned; none. |
