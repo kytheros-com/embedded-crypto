@@ -131,7 +131,7 @@ not proof of later runtime protection settings.
 | `FLT-01-001` | `FLT-01` | `PASS` | On 2026-11-25, two physical hardware-reset executions produced identical 55-word observations and the expected five-flash LD1 indication. Unprivileged `UDF #0x42` entered UsageFault (IPSR 6) with `CFSR=0x00010000` (`UNDEFINSTR` only), `HFSR=0`, and stacked PC at the labeled UDF. [Procedure](2026-11-25-cortex-m33-usagefault-undefined-instruction-procedure.md); [source](usagefault-undefined-instruction/); [hardware evidence](records/2026-11-25-cortex-m33-usagefault-undefined-instruction.md). |
 | `FLT-01-002` | `FLT-01` | `PASS` | On 2026-11-26, two physical-reset executions gave identical 56-word observations and the three-flash LD1 pattern. Privileged Thread/PSP `UDF #0x42` entered UsageFault with the predicted basic frame, `CFSR=0x00010000`, and unchanged `EXC_RETURN=0xFFFFFFBC`. Independent CPUID confirmed Cortex-M33 r0p4; physical Flash read-back matched the programming image. [Procedure](2026-11-26-cortex-m33-usagefault-undefined-instruction-privileged-procedure.md); [source](usagefault-undefined-instruction-privileged/); [hardware evidence](records/2026-11-26-cortex-m33-usagefault-undefined-instruction-privileged.md). |
 | `FLT-01-003` | `FLT-01` | `PASS` | On 2026-11-27, two physical-reset executions gave identical 64-word observations and the three-flash LD1 pattern. Privileged Thread/MSP `UDF #0x42` entered UsageFault with a basic frame preserved in the shared MSP reserve; eight direct frame words matched the diagnostic copy. `CFSR=0x00010000`, `EXC_RETURN=0xFFFFFFB8`, and physical Flash read-back matched the programming image. [Procedure](2026-11-27-cortex-m33-usagefault-undefined-instruction-msp-procedure.md); [source](usagefault-undefined-instruction-msp/); [hardware evidence](records/2026-11-27-cortex-m33-usagefault-undefined-instruction-msp.md). |
-| `FLT-01-004` | `FLT-01` | `IMPLEMENTED` | Standalone unprivileged Thread/PSP integer divide-by-zero characterization has separate trap-disabled and trap-enabled builds with the same assembly UDIV probe. Static inspection is complete; four physical RESET executions and human evidence review remain pending. [Procedure](2026-11-27-cortex-m33-usagefault-divide-by-zero-procedure.md); [source](usagefault-divide-by-zero/). |
+| `FLT-01-004` | `FLT-01` | `PASS` | On 2026-11-27, two physical RESET runs per configuration met their separate criteria: unprivileged Thread/PSP `UDIV` with zero divisor continued with quotient zero when `DIV_0_TRP=0`, and entered UsageFault with `CFSR=0x02000000` when `DIV_0_TRP=1`. Each pair was repeatable (69 and 77 observed words per run); enabled physical PSP frames matched the diagnostic copies. Both physical Flash readbacks matched their images. [Procedure](2026-11-27-cortex-m33-usagefault-divide-by-zero-procedure.md); [source](usagefault-divide-by-zero/); [hardware evidence](records/2026-11-27-cortex-m33-usagefault-divide-by-zero.md). |
 
 The completed [evidence record](records/2026-11-25-cortex-m33-usagefault-undefined-instruction.md)
 identifies committed source revision
@@ -176,13 +176,25 @@ the original baseline. Exact reset times, instrumental LED timing,
 and the full macOS build-check transcript were not supplied. PASS is
 limited to this controlled successful exception-entry procedure.
 
+`FLT-01-004` has a separate [hardware evidence record](records/2026-11-27-cortex-m33-usagefault-divide-by-zero.md)
+for the clean macOS source checkout at
+`260d8145d623af93b395406182f1846ca714de7f`. Its seven source
+digests match the earlier Linux reference builds made while the
+FLT-01-004 implementation was uncommitted. Both cross-host Flash
+payloads and programming images matched, and each physical Flash
+readback matched its image byte for byte. Two disabled and two
+enabled physical RESET runs met distinct prospective acceptance
+criteria. A read-only option-byte display was captured between
+deployments; complete macOS build-check and programming-verification
+transcripts were not supplied. PASS is limited to this controlled
+conditional integer divide-by-zero characterization.
+
 ## Preliminary experiment families
 
 Every row below describes preliminary coverage. `PARTIAL` marks only a
 related, limited historical observation or completed child experiment.
-`FLT-01-001` through `FLT-01-003` have board results. `FLT-01-004`
-is implemented but has no board result. Other UsageFault causes remain
-untested. No family is complete, and
+`FLT-01-001` through `FLT-01-004` have board results. Other
+UsageFault causes remain untested. No family is complete, and
 applicability of future proposed
 experiments remains to be established during planning. The linked
 historical IDs are cross-references, not substitute acceptance results
@@ -190,7 +202,7 @@ for a family.
 
 | Family | Investigation | Coverage and related evidence |
 |---|---|---|
-| `FLT-01` | UsageFault classification | `PARTIAL` hardware coverage: `FLT-01-001` (unprivileged Thread/PSP), `FLT-01-002` (privileged Thread/PSP), and `FLT-01-003` (privileged Thread/MSP) passed for the same UDF instruction. `FLT-01-004` conditional divide-by-zero is implemented but not physically tested. Other UsageFault causes, execution domains, containment, and recovery remain untested. |
+| `FLT-01` | UsageFault classification | `PARTIAL` hardware coverage: `FLT-01-001` (unprivileged Thread/PSP), `FLT-01-002` (privileged Thread/PSP), and `FLT-01-003` (privileged Thread/MSP) passed for the same UDF instruction. `FLT-01-004` passed separate trap-disabled and trap-enabled unprivileged Thread/PSP unsigned divide-by-zero runs. Other UsageFault causes, execution domains, containment, and recovery remain untested. |
 | `FLT-02` | MemManage classification and execution-domain attribution | `PARTIAL`: `HW-003`–`HW-005` classified selected unprivileged access faults; no general attribution or recovery. |
 | `FLT-03` | BusFault classification, including precise and imprecise faults where supported | Planned; applicability of each fault mode to be checked. |
 | `FLT-04` | Fault escalation to HardFault | Planned; `HW-003`–`HW-005` observed no escalation for their selected faults. |
