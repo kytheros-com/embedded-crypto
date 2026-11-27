@@ -78,7 +78,8 @@ def option_fields(text):
 
 def parse_words(output, address, count):
     words = {}
-    for line in output.splitlines():
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", output)
+    for line in plain.splitlines():
         match = re.match(
             r"^\s*(?:0x)?([0-9A-Fa-f]{8})\s*:\s*"
             r"((?:(?:0x)?[0-9A-Fa-f]{8}\s*)+)$", line,
@@ -92,6 +93,8 @@ def parse_words(output, address, count):
                 if location in words:
                     raise RuntimeError("Duplicate SWD word address")
                 words[location] = value
+        elif re.match(r"^\s*(?:0x)?[0-9A-Fa-f]+\s*:", line):
+            raise RuntimeError(f"Malformed SWD word line: {line}")
     expected = {address + 4 * index for index in range(count)}
     if set(words) != expected:
         raise RuntimeError(
@@ -208,10 +211,12 @@ def accept_repeated(symbols, record, user, frame, descriptor,
                     sentinel, ccr, scb, cpuid):
     expect(record[0:7] == [1, 5, 2, 2, 3, 5, 0],
            "Single-boot completion counters")
-    expect(record[7] == 0 and record[9] == 0x50000
-           and record[10] == ccr and ccr & 8 == 0
+    expect(record[9] == 0x50000
+           and record[10] == ccr and ccr & 0x10 == 0
            and record[11:16] == [SENTINEL, SENTINEL, 5, 0, 0],
            "Startup state, sentinel or descriptor retirement")
+    expect(len(record) == 64 and record[56:64] == [0] * 8,
+           "Reserved supervisor words must stay zero")
     expect(record[8] == 0 and scb == [0x50080, 0, 0],
            "Sticky syndrome was not cleared or final SVC state wrong")
     expect(user == [1, 2, 3, 4, 5, 0] and sentinel == SENTINEL
@@ -239,6 +244,92 @@ def accept_repeated(symbols, record, user, frame, descriptor,
            and frame[6] == symbols["svc_finish_return"]
            and frame[7] & 0x010003FF == 0x01000000,
            "Final physical SVC frame")
+
+
+def observation_regions(name, symbols, capture):
+    repeated = name == "008"
+    regions = [
+        ("supervisor", symbols["flt_results"], capture["record"]),
+        ("user", symbols["mpu_work"], capture["user"]),
+    ]
+    if capture["frame"] is not None:
+        label = "final_svc_frame" if repeated else "physical_psp_frame"
+        regions.append((label, 0x20001FE0, capture["frame"]))
+    if repeated:
+        regions.append(("descriptor", symbols["expected_fault"],
+                        capture["descriptor"]))
+    regions.extend((
+        ("sentinel", symbols["protected_sentinel"],
+         [capture["sentinel"]]),
+        ("ccr", 0xE000ED14, [capture["ccr"]]),
+        ("scb", 0xE000ED24, capture["scb"]),
+        ("cpuid", 0xE000ED00, [capture["cpuid"]]),
+    ))
+    return regions
+
+
+def observation_field(name, region, index):
+    if region == "scb":
+        return ("SHCSR", "CFSR", "HFSR")[index]
+    if region == "supervisor" and name == "008":
+        if 16 <= index < 56:
+            slot = "UDF1" if index < 36 else "UDF2"
+            local = (index - 16) % 20
+            return f"{slot}.word{local:02d}"
+        return f"word{index:02d}"
+    if region == "supervisor":
+        return f"word{index:02d}"
+    if region in ("physical_psp_frame", "final_svc_frame"):
+        return ("R0", "R1", "R2", "R3", "R12", "LR",
+                "PC", "xPSR")[index]
+    return f"word{index:02d}"
+
+
+def difference_class(name, region, index, first, second):
+    if region == "supervisor" and name == "008":
+        if index == 7 or any(index == start + offset
+                             for start in (16, 36)
+                             for offset in (3, 4, 5)):
+            return "unconstrained"
+        if index in (23, 43) and (first ^ second) & 0x010003FF == 0:
+            return "unconstrained flags"
+    if region == "supervisor" and name != "008":
+        if index in (41, 42, 43):
+            return "unconstrained"
+        if index == 45 and (first ^ second) & 0x010003FF == 0:
+            return "unconstrained flags"
+    if region == "physical_psp_frame":
+        if index in (3, 4, 5):
+            return "unconstrained"
+        if index == 7 and (first ^ second) & 0x010003FF == 0:
+            return "unconstrained flags"
+    if region == "final_svc_frame":
+        if index < 6:
+            return "unconstrained"
+        if index == 7 and (first ^ second) & 0x010003FF == 0:
+            return "unconstrained flags"
+    return "acceptance-relevant; each run evaluated separately"
+
+
+def compare_runs(name, symbols, first, second):
+    left = observation_regions(name, symbols, first)
+    right = observation_regions(name, symbols, second)
+    expect(len(left) == len(right), "Repeat region count differs")
+    result = {}
+    for (label, base, a), (other, other_base, b) in zip(left, right):
+        expect(label == other and base == other_base and len(a) == len(b),
+               f"Repeat region shape differs: {label}")
+        differences = [
+            {"address": f"0x{base + 4 * index:08X}",
+             "offset_bytes": 4 * index,
+             "field": observation_field(name, label, index),
+             "run_1": f"0x{old:08X}", "run_2": f"0x{new:08X}",
+             "classification": difference_class(name, label, index,
+                                                   old, new)}
+            for index, (old, new) in enumerate(zip(a, b)) if old != new
+        ]
+        result[label] = {"words": len(a), "differences": differences}
+    return result
 
 
 def collect(programmer, manifest, name, folder, led):
@@ -296,6 +387,86 @@ def readback(programmer, manifest_path, manifest, name, folder):
     }, indent=2) + "\n", encoding="utf-8")
 
 
+def evidence_identity(manifest_path, reference_path, manifest):
+    return {
+        "manifest_sha256": sha(manifest_path),
+        "reference_manifest_sha256": (
+            sha(reference_path) if reference_path else None),
+        "images": {
+            name: dict(manifest["configurations"][name]["image"])
+            for name in CONFIGS
+        },
+    }
+
+
+def validate_saved_run(folder, name, symbols):
+    path = folder / "decoded.json"
+    expect(path.is_file(), f"Missing accepted execution: {folder}")
+    capture = json.loads(path.read_text())
+    expect(capture.get("configuration") == name
+           and capture.get("result") == "PROVISIONAL PASS",
+           f"Invalid saved execution identity: {folder}")
+    transcript_names = {
+        "supervisor": "supervisor-record",
+        "user": "user-record",
+        "physical_psp_frame": "physical-frame",
+        "final_svc_frame": "physical-frame",
+        "descriptor": "descriptor",
+        "sentinel": "sentinel",
+        "ccr": "ccr",
+        "scb": "scb",
+        "cpuid": "cpuid",
+    }
+    for label, address, expected in observation_regions(
+            name, symbols, capture):
+        transcript = folder / f"{transcript_names[label]}.txt"
+        expect(transcript.is_file(),
+               f"Incomplete saved raw evidence: {transcript}")
+        raw = transcript.read_text()
+        expect(re.search(r"^exit=0$", raw, re.MULTILINE),
+               f"Failed saved programmer command: {transcript}")
+        observed = parse_words(raw, address,
+                               len(expected))
+        expect(observed == expected,
+               f"Saved raw/decoded evidence differs: {transcript}")
+    if name == "008":
+        accept_repeated(symbols, capture["record"], capture["user"],
+                        capture["frame"], capture["descriptor"],
+                        capture["sentinel"], capture["ccr"],
+                        capture["scb"], capture["cpuid"])
+    else:
+        accept_alignment(name, symbols, capture["record"],
+                         capture["user"], capture["frame"],
+                         capture["sentinel"], capture["ccr"],
+                         capture["scb"], capture["cpuid"])
+    expected_led = "dark" if name == "005-disabled" else "three"
+    expect(capture["led"] == expected_led,
+           f"Saved LED observation mismatch: {folder}")
+    return capture
+
+
+def validate_completed(output, manifest, name):
+    symbols = manifest["configurations"][name]["symbols"]
+    for number in (1, 2):
+        validate_saved_run(output / name / f"run-{number}",
+                           name, symbols)
+    comparison = output / name / "final-readback" / "comparison.json"
+    expect(comparison.is_file(),
+           f"Cannot resume past {name} without Flash readback")
+    observed = json.loads(comparison.read_text())
+    readback_file = output / name / "final-readback" / "physical-readback.bin"
+    upload_log = output / name / "final-readback" / "upload.txt"
+    expect(readback_file.is_file() and upload_log.is_file()
+           and re.search(r"^exit=0$", upload_log.read_text(), re.MULTILINE),
+           f"Incomplete saved Flash readback: {name}")
+    expect(observed.get("result") == "PASS"
+           and {key: observed.get(key) for key in ("bytes", "sha256")}
+           == manifest["configurations"][name]["image"]
+           and readback_file.stat().st_size == observed["bytes"]
+           and sha(readback_file) == observed["sha256"],
+           f"Saved Flash readback identity differs: {name}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
@@ -326,11 +497,19 @@ def main():
         parser.error("campaign requires --reference-manifest")
     manifest_path = args.manifest.resolve()
     manifest_data = json.loads(manifest_path.read_text())
+    scripts = manifest_data.get("campaign_scripts_sha256", {})
+    if (scripts.get("runner.py") != sha(Path(__file__))
+            or scripts.get("build.py")
+            != sha(BOARD / "campaign/build.py")):
+        raise RuntimeError("Campaign scripts differ from build manifest")
     selected = args.select.split(",")
     if any(name not in CONFIGS for name in selected):
         parser.error("Unknown configuration in --select")
     if args.reference_manifest:
         reference = json.loads(args.reference_manifest.read_text())
+        if (reference.get("campaign_scripts_sha256")
+                != manifest_data["campaign_scripts_sha256"]):
+            raise RuntimeError("Cross-host campaign script digest mismatch")
         for name in selected:
             ours = manifest_data["configurations"][name]
             theirs = reference["configurations"][name]
@@ -383,24 +562,46 @@ def main():
     if output.exists() and not args.resume:
         raise RuntimeError("Evidence output exists; use a new directory")
     output.mkdir(parents=True, exist_ok=True)
+    identity_path = output / "campaign-identity.json"
+    identity = evidence_identity(manifest_path,
+                                 args.reference_manifest.resolve()
+                                 if args.reference_manifest else None,
+                                 manifest_data)
+    if args.resume:
+        expect(identity_path.is_file()
+               and json.loads(identity_path.read_text()) == identity,
+               "Resume manifest or reviewed images differ")
+    else:
+        with identity_path.open("x", encoding="utf-8") as file:
+            json.dump(identity, file, indent=2)
+            file.write("\n")
+    summary_path = output / "summary.json"
+    previous_summary = (json.loads(summary_path.read_text())["runs"]
+                        if args.resume and summary_path.is_file() else [])
     for name in skipped:
-        comparison = output / name / "final-readback" / "comparison.json"
-        if (not comparison.is_file()
-                or json.loads(comparison.read_text()).get("result") != "PASS"):
-            raise RuntimeError(
-                f"Cannot resume past {name} without accepted Flash readback"
-            )
+        expect(any(item.get("configuration") == name
+                   and item.get("acceptance") == "PROVISIONAL PASS"
+                   for item in previous_summary),
+               f"Cannot resume past missing summary: {name}")
+        validate_completed(output, manifest_data, name)
     if not args.programmer.is_file() or not os.access(args.programmer,
                                                      os.X_OK):
         raise RuntimeError("Configured programmer path is not executable")
     programmer = str(args.programmer.resolve())
-    summary_path = output / "summary.json"
-    summary = (json.loads(summary_path.read_text())["runs"]
-               if args.resume and summary_path.is_file() else [])
+    summary = [item for item in previous_summary
+               if item["configuration"] in skipped]
     for name in selected:
         folder = output / name
         folder.mkdir(exist_ok=True)
         item = manifest_data["configurations"][name]
+        first = resume_run if name == resume_name else 1
+        if (folder / f"run-{first}").exists():
+            raise RuntimeError(
+                f"Refusing to overwrite existing execution: {name} run {first}"
+            )
+        prior_capture = (validate_saved_run(
+            folder / "run-1", name, item["symbols"])
+            if first == 2 else None)
         image = manifest_path.parent / name / "image.bin"
         if (image.stat().st_size != item["image"]["bytes"]
                 or sha(image) != item["image"]["sha256"]):
@@ -412,8 +613,10 @@ def main():
                                      "%Y%m%dT%H%M%SZ"))
         baseline_check(programmer, precheck,
                        HOTPLUG if args.evidence_only else UNDER_RESET)
-        first = resume_run if name == resume_name else 1
         already_programmed = (folder / "programming.txt").is_file()
+        if already_programmed:
+            expect("exit=0\n" in (folder / "programming.txt").read_text(),
+                   f"Incomplete or failed programming transcript: {name}")
         if args.campaign and first == 1 and not already_programmed:
             print(name, item["image"], "at", image)
             phrase = f"PROGRAM {name} {item['image']['sha256'][:12]}"
@@ -428,14 +631,8 @@ def main():
                                datetime.now(timezone.utc).strftime(
                                    "%Y%m%dT%H%M%SZ")))
         captures = []
-        if first == 2:
-            prior = folder / "run-1" / "decoded.json"
-            if not prior.is_file():
-                raise RuntimeError("Resume run 2 requires accepted run 1")
-            prior_result = json.loads(prior.read_text())
-            if prior_result.get("result") != "PROVISIONAL PASS":
-                raise RuntimeError("Prior run 1 is not accepted")
-            captures.append(prior_result)
+        if prior_capture is not None:
+            captures.append(prior_capture)
         for number in range(first, 3):
             run_folder = folder / f"run-{number}"
             run_folder.mkdir(exist_ok=False)
@@ -458,19 +655,18 @@ def main():
                 json.dumps(result, indent=2) + "\n", encoding="utf-8")
             captures.append(result)
             print(name, number, result["result"])
-        if len(captures) == 2:
-            differences = [i for i, (a, b) in
-                           enumerate(zip(captures[0]["record"],
-                                         captures[1]["record"])) if a != b]
-        else:
-            differences = []
+        expect(len(captures) == 2,
+               f"Two accepted physical executions required: {name}")
+        repeat = compare_runs(name, item["symbols"],
+                              captures[0], captures[1])
         readback(programmer, manifest_path, manifest_data,
                  name, folder / "final-readback")
         summary = [item for item in summary
                    if item["configuration"] != name]
         summary.append({"configuration": name, "runs": len(captures),
-                        "record_differing_offsets": [4 * i for i in
-                                                     differences],
+                        "observed_words_per_run": sum(
+                            region["words"] for region in repeat.values()),
+                        "repeat_comparison": repeat,
                         "physical_flash": "PASS",
                         "acceptance": "PROVISIONAL PASS"})
         summary_path.write_text(

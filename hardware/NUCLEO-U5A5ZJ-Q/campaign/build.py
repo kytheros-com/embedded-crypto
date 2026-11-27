@@ -7,9 +7,11 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import platform
 import re
 import shutil
 import subprocess
+import sys
 
 BOARD = Path(__file__).resolve().parents[1]
 ROOT = BOARD.parents[1]
@@ -69,6 +71,34 @@ def source_files(source):
         "Cargo.toml", "Cargo.lock", "build.rs", "memory.x",
         "inspect-elf.py", "src/main.rs", "src/transition.s",
     )] + sorted(source.glob("src/probe-*.s"))
+
+
+def compare_reference(item, prior, name):
+    for label in ("sources_sha256", "payload", "image"):
+        if item[label] != prior[label]:
+            raise RuntimeError(f"Cross-host {label} mismatch: {name}")
+
+
+def version(command):
+    result = subprocess.run([str(part) for part in command],
+                            capture_output=True, text=True, check=True)
+    return result.stdout.splitlines()[0]
+
+
+def host_provenance(cargo):
+    return {
+        "os": platform.system(),
+        "os_release": platform.release(),
+        "os_version": platform.version(),
+        "macos_version": platform.mac_ver()[0] or None,
+        "architecture": platform.machine(),
+        "rustc": version(["rustc", "+1.98.1", "--version"]),
+        "cargo": version([cargo, "+1.98.1", "--version"]),
+        "python": sys.version.splitlines()[0],
+        "gnu_readelf": version([tool("readelf"), "--version"]),
+        "gnu_objdump": version([tool("objdump"), "--version"]),
+        "gnu_objcopy": version([tool("objcopy"), "--version"]),
+    }
 
 
 def check_rust_lines(log):
@@ -168,9 +198,7 @@ def build_one(name, output, cargo, reference=None):
     }
     if reference is not None:
         prior = reference["configurations"][name]
-        for label in ("payload", "image"):
-            if item[label] != prior[label]:
-                raise RuntimeError(f"Cross-host {label} mismatch: {name}")
+        compare_reference(item, prior, name)
     print(name, item["image"])
     return item
 
@@ -216,6 +244,11 @@ def main():
         configs[name] = build_one(name, output, cargo, reference)
     manifest = {
         "created_utc": datetime.now(timezone.utc).isoformat(),
+        "host": host_provenance(cargo),
+        "campaign_scripts_sha256": {
+            "build.py": digest(Path(__file__).read_bytes()),
+            "runner.py": digest((BOARD / "campaign/runner.py").read_bytes()),
+        },
         "git_head": run(["git", "rev-parse", "HEAD"], ROOT, log).strip(),
         "git_status": run(["git", "status", "--short", "--branch"],
                           ROOT, log),

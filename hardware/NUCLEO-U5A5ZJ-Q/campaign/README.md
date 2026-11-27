@@ -63,6 +63,13 @@ ELFs in distinct target directories. It saves full readelf and
 disassembly output, inspector output, payloads, images, independent
 GNU objcopy binaries, logs, source hashes, and artifact hashes.
 It stops on a mismatched cross-host source, payload, or image hash.
+The build-only reference comparison covers the complete firmware
+source digest map as well as both deployable artifact digests and
+sizes. ELF containers retain separate host-specific provenance.
+The manifest records host OS/version/architecture, tool versions,
+campaign-script digests, Git revision, and working-tree status.
+Run the host-only checks with
+`python3 -m unittest discover -s hardware/NUCLEO-U5A5ZJ-Q/campaign -p 'test_*.py' -v`.
 
 ```sh
 python3 hardware/NUCLEO-U5A5ZJ-Q/campaign/build.py \
@@ -124,13 +131,28 @@ their distinct directories.
 
 `--select 006,007`, `--resume 007:2`, and `--evidence-only` provide
 selection, continuation and read-only collection. A resumed second
-run requires the first accepted run file. Evidence-only mode verifies
+run requires the first accepted run and its raw transcripts. A
+`campaign-identity.json` file binds resumed evidence to the exact
+build and reference manifests and all reviewed image identities;
+completed earlier configurations are rechecked before being skipped.
+The runner verifies that both campaign scripts match the local build
+manifest and that their digests agree across hosts.
+It reparses saved raw SWD transcripts against each decoded run and
+rechecks the saved physical Flash upload bytes before resuming past a
+configuration.
+Existing run directories are never overwritten. Evidence-only mode verifies
 the current Flash image by readback before collecting data. The
 `--build-only` mode delegates to the consolidated build script.
 
 The compact submission file is `summary.json` in the evidence output
 directory. Every command has a complete raw `.txt` transcript with
 UTC start/end times and exact arguments; each run has `decoded.json`.
+The summary compares every supervisor, user, direct-frame, descriptor,
+sentinel, CCR, SCB, and CPUID word between independent runs, with
+addresses and field labels for differences. Unconstrained stacked
+registers and condition flags are reported without failing otherwise
+accepted runs. FLT-01-008's direct frame is the **final SVC frame**;
+its two UDF frames survive only as protected diagnostic copies.
 Submit `summary.json`, all `decoded.json` files, the manifest, and
 the raw transcript directory for independent review. Runner PASS is
 **provisional**, not a hardware evidence record or engineering approval.
