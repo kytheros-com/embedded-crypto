@@ -1,0 +1,19 @@
+[package]
+name = "nucleo-u5a5zj-q-usagefault-repeated-expected"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98.1"
+license = "Apache-2.0"
+publish = false
+
+[workspace]
+
+[dependencies]
+cortex-m = "0.7.10"
+cortex-m-rt = { version = "0.7.7", features = ["set-vtor"] }
+stm32u5 = { version = "0.16.0", default-features = false, features = ["rt", "stm32u5a5"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+panic = "abort"
